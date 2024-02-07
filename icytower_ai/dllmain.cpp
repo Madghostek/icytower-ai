@@ -40,6 +40,7 @@ BOOL WINAPI EnumCallback(HWND hwnd,LPARAM lparam) {
 
 DWORD WINAPI MainThread(PVOID param)
 {
+    srand(time(0));
     HWND icyHWND = NULL;
     GetConsole();
     EnumWindows(EnumCallback, (LPARAM)&icyHWND);

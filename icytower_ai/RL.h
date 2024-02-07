@@ -19,6 +19,8 @@ typedef union {
 
 constexpr unsigned inputSize = sizeof(RLInput) / sizeof(float);
 
+// if AI hasn't reached higher floor for 200 frames, kill it
+constexpr unsigned maxNoProgressTime = 200;
 
 
 
@@ -31,3 +33,6 @@ typedef std::vector<tiny_dnn::vec_t> ActionsTaken;
 void InitNetwork();
 
 void DecideInputs(RLInput*, uint8_t*);
+void PenalizeRecent();
+void GoodRecent();
+void ResetRecent();

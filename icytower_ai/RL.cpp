@@ -63,6 +63,47 @@ void InitNetwork()
 	//auto result = net.predict(input)
 }
 
+// Recent decisions were bad and caused player to die (or get killed off due to inactivity)
+// we don't want that, train network on opposite inputs as correct (which is not ideal)
+void PenalizeRecent()
+{
+	tiny_dnn::gradient_descent opt;
+	opt.alpha = 0.001;
+	for (int i = 0; i < std::min((int)recentDecisions.size(),20); ++i)
+	{
+		int j = recentDecisions.size();
+		printf("train %d\n", i);
+		auto state = std::vector<vec_t>({ recentDecisions[j-i-1].inputs });
+		auto temp = recentDecisions[j-i-1].outputs;
+		temp[0] = 1 - temp[0];
+		temp[1] = 1 - temp[1];
+		temp[2] = 1 - temp[2];
+		auto action = std::vector<vec_t>({ temp });
+		AI::Get().fit<mse>(opt, state, action, 1, 1);
+	}
+	
+}
+
+void GoodRecent()
+{
+	tiny_dnn::gradient_descent opt;
+	opt.alpha = 0.2;
+	for (int i = 0; i < std::min((int)recentDecisions.size(),30); ++i)
+	{
+		int j = recentDecisions.size();
+		printf("train %d\n", i);
+		auto state = std::vector<vec_t>({ recentDecisions[j - i - 1].inputs });
+		auto action = std::vector<vec_t>({ recentDecisions[j - i - 1].outputs });
+		AI::Get().fit<mse>(opt, state, action, 1, 20);
+	}
+
+}
+
+void ResetRecent()
+{
+	recentDecisions.clear();
+}
+
 /// <summary>
 /// Runs forward pass through the network
 /// </summary>
@@ -80,9 +121,12 @@ void DecideInputs(RLInput* state, uint8_t* keys)
 	recentDecisions.push_back({ inputs,result });
 
 	// turn into bools
-	int right = result[0] > 0.5;
-	int left = result[1] > 0.5;
-	int jump = result[2] > 0.5;
+	float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+	int right = r < std::max(0.f,result[0]);
+	r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+	int left = r < std::max(0.f, result[1]);
+	r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+	int jump = r < std::max(0.f, result[2]);
 
 	*keys |= JUMP_INPUT & -jump;
 	*keys |= LEFT_INPUT & -left;
