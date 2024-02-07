@@ -206,8 +206,8 @@ void  _HookInput(KeyStates* keyStates)
 			// 11 is Xpos 163,
 			// 10 is 146
 			// 7 is 99
-			float dist = abs(gameState->Xpos - 17*(state.platforms[1].left_edge + state.platforms[1].right_edge) / 2);
-			PenalizeRecent(dist);
+			//float dist = abs(gameState->Xpos - 17*(state.platforms[1].left_edge + state.platforms[1].right_edge) / 2);
+			PenalizeRecent();
 			ResetRecent();
 			*space_pressed_menu = 0xFF; //always skip
 			gameState->gameOverHeight = 0x500;
@@ -238,7 +238,7 @@ void  _HookInput(KeyStates* keyStates)
 	// GetPlatforms(state.platforms);
 	state.isOnGround = !gameState->jumpPhase;
 	//printf("Phase %d\n", gameState->jumpPhase);
-	// state.Xpos = gameState->Xpos;
+	state.Xpos = gameState->Xpos;
 	state.Ypos = gameState->Ypos;
 	state.XSpeed = gameState->XSpeed;
 	state.YSpeed = gameState->YSpeed;

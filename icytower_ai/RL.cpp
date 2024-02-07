@@ -26,9 +26,12 @@ typedef struct S
 	vec_t inputs;
 	vec_t outputs;
 	unsigned actionTaken; //action index
+	float reward;
+	vec_t nextState;
+
 
 public:
-	S(vec_t in_vec, vec_t out_vec, unsigned action) : inputs(in_vec), outputs(out_vec), actionTaken(action) {};
+	S(vec_t in_vec, vec_t out_vec, unsigned a, float r, vec_t nextState) : inputs(in_vec), outputs(out_vec), actionTaken(a), reward(r), nextState(nextState) {};
 } Decision;
 
 std::vector<Decision> recentDecisions;
@@ -61,8 +64,9 @@ void InitNetwork()
 		std::cout << "Network init" << std::endl;
 
 		gNet << fully_connected_layer(inputSize, 64) << sigmoid_layer();
-		gNet << fully_connected_layer(64, 64) << sigmoid_layer();
-		gNet << fully_connected_layer(64, 3, false) << leaky_relu_layer();
+		gNet << fully_connected_layer(64, 32) << sigmoid_layer();
+		gNet << fully_connected_layer(32, 16) << sigmoid_layer();
+		gNet << fully_connected_layer(16, 3, false) << leaky_relu_layer();
 	}
 	else
 	{
@@ -78,21 +82,32 @@ void InitNetwork()
 // Recent decisions were bad and caused player to die (or get killed off due to inactivity)
 // we don't want that, train network on opposite inputs as correct (which is not ideal)
 // Change: give reward for getting close to platform middle instead
-void PenalizeRecent(float reward)
+void PenalizeRecent()
 {
 	tiny_dnn::gradient_descent opt;
-	printf("train, dist: %f\n", reward);
-	float trueReward = 200/reward;
+	printf("train\n");
 	int j = recentDecisions.size();
-	for (int i = 0; i < std::min(j,20); ++i)
+	//we don't have next state at last element (i=0) and first??
+
+	std::vector<unsigned> randomActions;
+	for (int i = 0; i < 20; ++i)
+	{
+		randomActions.push_back((rand()% (recentDecisions.size() - 2))+1);
+	}
+	for (auto i: randomActions)
 	{
 		auto state = std::vector<vec_t>({ recentDecisions[j - i - 1].inputs });
 		auto predictions = std::vector<vec_t>({ recentDecisions[j - i - 1].outputs });
 		auto actionTaken = recentDecisions[j - i - 1].actionTaken;
-		printf("predictions : %f %f %f act: %d\n", predictions[0][0], predictions[0][1], predictions[0][2], actionTaken);
-		predictions[0][actionTaken] = predictions[0][actionTaken]*(1-lrate)+trueReward*lrate; //Qlearning
+		auto reward = recentDecisions[j - i - 1].reward;
+		auto nextState = std::vector<vec_t>({ recentDecisions[j - i - 1].nextState });
+
+		auto Qvalue_nextState = gNet.predict(nextState); 
+		auto bestFutureQvalue = *std::max_element(Qvalue_nextState[0].begin(), Qvalue_nextState[0].end());
+
+		printf("predictions : %f %f %f act: %d r: %f\n", predictions[0][0], predictions[0][1], predictions[0][2], actionTaken, reward);
+		predictions[0][actionTaken] = predictions[0][actionTaken]*(1-lrate)+(reward + gamma*bestFutureQvalue)*lrate; //Qlearning
 		printf("updated prd : %f %f %f\n", predictions[0][0], predictions[0][1], predictions[0][2]);
-		trueReward = trueReward * gamma;
 		gNet.fit<mse>(opt, state, predictions, 1, 1);
 	}
 	
@@ -133,6 +148,9 @@ void DecideInputs(RLInput* state, uint8_t* keys)
 	for (int i = 0; i < 22; ++i)
 		inputs.push_back( state->all[i]);
 
+	if (recentDecisions.size()>1)
+		recentDecisions.back().nextState = inputs; //update previous experience with current state
+
 	unsigned actionIdx;
 	auto Qvalues = gNet.predict(inputs);
 	auto roll = rand() / (float)RAND_MAX;
@@ -152,7 +170,16 @@ void DecideInputs(RLInput* state, uint8_t* keys)
 
 	*keys = actions[actionIdx];
 
-	recentDecisions.push_back({ inputs,Qvalues, actionIdx });
+	float reward = 0.f;
+	if (actionIdx == 1 && state->Xpos < 17 * (state->platforms[1].left_edge + state->platforms[1].right_edge) / 2)
+		reward = -10.f;
+	else if (actionIdx == 2 && state->Xpos > 17 * (state->platforms[1].left_edge + state->platforms[1].right_edge) / 2)
+		reward = -10.f;
+	else if (actionIdx == 1 && state->Xpos > 17 * (state->platforms[1].left_edge + state->platforms[1].right_edge) / 2)
+		reward = 10.f;
+	else if (actionIdx == 2 && state->Xpos < 17 * (state->platforms[1].left_edge + state->platforms[1].right_edge) / 2)
+		reward = 10.f;
+	recentDecisions.push_back({ inputs,Qvalues, actionIdx, reward,{}}); //next state will be filled at next step
 }
 
 
