@@ -52,8 +52,8 @@ DWORD WINAPI MainThread(PVOID param)
     //DisableScreen();
 
     // RL stuff
-    InitNetwork();
-    TrainFakeStates();
+    //InitNetwork();
+    //TrainFakeStates();
 
     //Platform copy[platformCount];
     //memcpy(copy, *platformsptr, sizeof(copy));
@@ -62,6 +62,7 @@ DWORD WINAPI MainThread(PVOID param)
         if (KEY('I') && KEY(VK_CONTROL))
         {
             InitNetwork();
+            TrainFakeStates();
         }
         if (KEY('K') && KEY(VK_SHIFT))
         {
