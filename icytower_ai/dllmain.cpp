@@ -1,7 +1,6 @@
 #include <windows.h>
 #include <stdio.h>
 
-#include "main.h"
 #include "hook.h"
 
 BOOL GetConsole()
