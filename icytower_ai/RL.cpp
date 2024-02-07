@@ -79,6 +79,38 @@ void InitNetwork()
 	//auto result = net.predict(input)
 }
 
+void TrainFakeStates()
+{
+	float mid = 450;
+	tiny_dnn::adagrad opt;
+
+	tensor_t states{};
+	tensor_t outputs{};
+
+	for (int i = 0; i < 10; ++i)
+	{
+		float randomX = (rand() % (450 - 90)) + 90; //85-450 mniej wiecej
+		states.push_back({ randomX, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 });
+		outputs.push_back({ {-10,-10,10} }); //right best
+	}
+	for (int i = 0; i < 10; ++i)
+	{
+		float randomX = (rand() % (550 - 450)) + 450; //550-450 mniej wiecej
+		states.push_back({ randomX, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 });
+		outputs.push_back({ {-10,10,-10} }); // left best
+
+	}
+	std::cout << "Training on fake states and outputs...\n";
+	gNet.fit<mse>(opt, states, outputs, 1, 200);
+
+	std::cout << "Testing state separation:\n";
+	vec_t test1 = { 200, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+	auto res = gNet.predict(test1);
+
+	printf("preds: %f %f %f", res[0], res[1], res[2]);
+
+}
+
 // Recent decisions were bad and caused player to die (or get killed off due to inactivity)
 // we don't want that, train network on opposite inputs as correct (which is not ideal)
 // Change: give reward for getting close to platform middle instead
