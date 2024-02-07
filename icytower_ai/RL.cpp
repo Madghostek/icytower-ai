@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <cstdio>
 #include <algorithm>
+#include <chrono>
 
 #include "RL.h"
 
@@ -9,9 +10,9 @@ using namespace tiny_dnn;
 
 
 const static float gamma = 0.6; //q network reward, should be big if state space is big
-static float epsilon = 0.1; // random action take, initially tell the network to roam almost randomly, to get some sense about the Q predictions
+static float epsilon = 0.9; // random action take, initially tell the network to roam almost randomly, to get some sense about the Q predictions
 static float epsilon_min = 0.1; //don't decrease lower
-static float decay = 0.999; // epsilon dimnishing
+static float decay = 0.9; // epsilon dimnishing
 static float lrate = 0.2; // how much to update the old value
 //const uint8_t actions[] = { 0,JUMP_INPUT,LEFT_INPUT,RIGHT_INPUT,JUMP_INPUT | LEFT_INPUT,JUMP_INPUT | RIGHT_INPUT };
 const uint8_t actions[] = { 0,LEFT_INPUT,RIGHT_INPUT};
@@ -83,38 +84,77 @@ void InitNetwork()
 	//auto result = net.predict(input)
 }
 
-void TrainFakeStates()
+void TestStateSeparation()
 {
-	float mid = 450;
-	tiny_dnn::gradient_descent opt;
-
-	tensor_t states{};
-	tensor_t outputs{};
-
-	for (int i = 0; i < 100; ++i)
-	{
-		float randomX = (rand() % (450 - 90)) + 90; //85-450 range
-		states.push_back({ randomX/ Xnormalisation });
-		outputs.push_back({ {-10,-10,10} }); //right best
-	}
-	for (int i = 0; i < 100; ++i)
-	{
-		float randomX = (rand() % (550 - 450)) + 450; //550-450 range
-		states.push_back({ randomX/ Xnormalisation });
-		outputs.push_back({ {-10,10,-10} }); // left best
-
-	}
-	std::cout << "Training on fake states and outputs...\n";
-	gNet.fit<mse>(opt, states, outputs, 1, 50);
-
 	std::cout << "Testing state separation:\n";
-	for (auto x : { 200.f,300.f,400.f,500.f, 161.565689f})
+	for (auto x : { 200.f,300.f,400.f,500.f, 161.565689f })
 	{
-		vec_t test1 = { x/ Xnormalisation };
+		vec_t test1 = { x / Xnormalisation };
 		auto res = gNet.predict(test1);
 		printf("x: %f, preds: %f %f %f\n", x, res[0], res[1], res[2]);
 
 	}
+}
+
+void TrainFakeStates()
+{
+	float mid = 450;
+	tiny_dnn::adam opt;
+
+	tensor_t states{};
+	tensor_t outputs{};
+
+	// changing order of those is interesting, network remember better the most recent one,
+	// so for example right now it will overshoot the goal, and swapping the loops causes undershooting.
+	//for (int i = 0; i < 100; ++i)
+	//{
+	//	float randomX = (rand() % (550 - 450)) + 450; //550-450 range
+	//	states.push_back({ randomX / Xnormalisation });
+	//	outputs.push_back({ {-10,10,-10} }); // left best
+
+	//}
+	//for (int i = 0; i < 100; ++i)
+	//{
+	//	float randomX = (rand() % (450 - 90)) + 90; //85-450 range
+	//	states.push_back({ randomX/ Xnormalisation });
+	//	outputs.push_back({ {-10,-10,10} }); //right best
+	//}
+
+	std::vector<int> side;
+
+	for (int i = 0; i < 100; ++i)
+	{
+		side.push_back(1);
+	}
+	for (int i = 0; i < 100; ++i) {
+		side.push_back(0);
+
+	}
+	auto rng = std::default_random_engine{};
+	std::shuffle(side.begin(), side.end(), rng);
+
+	for (auto& s: side){
+		if (s)
+		{
+		float randomX = (rand() % (550 - 450)) + 450; //550-450 range
+		states.push_back({ randomX / Xnormalisation });
+		outputs.push_back({ {-10,10,-10} }); // left best
+		}
+		else {
+		float randomX = (rand() % (450 - 90)) + 90; //85-450 range
+		states.push_back({ randomX / Xnormalisation });
+		outputs.push_back({ {-10,-10,10} }); //right best
+		}
+
+	}
+	unsigned batch = 0;
+	std::cout << "Training on fake states and outputs...\n";
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+		gNet.fit<mse>(opt, states, outputs, 8,50, [&]() {
+			std::cout << "batch" << batch++ << std::endl;
+			TestStateSeparation();
+			}, [&]() {});
+	std::cout << "Trained for: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - begin).count() << std::endl;
 
 
 }
@@ -125,6 +165,7 @@ void TrainFakeStates()
 void PenalizeRecent()
 {
 	tiny_dnn::gradient_descent opt;
+	opt.alpha*=0.1*epsilon; //slow down!! use random walk epsilion here, so that it slows down even more when it's close to optimum
 	printf("train\n");
 	int j = recentDecisions.size();
 	//we don't have next state at last element (i=0) and first??
@@ -149,8 +190,13 @@ void PenalizeRecent()
 		printf("predictions: %f %f %f, x: %f, act: %d, r: %f\n", predictions[0][0], predictions[0][1], predictions[0][2], state[0][0], actionTaken, reward);
 		predictions[0][actionTaken] = predictions[0][actionTaken]*(1-lrate)+(reward + gamma*bestFutureQvalue)*lrate; //Qlearning
 		printf("updated prd : %f %f %f\n\n", predictions[0][0], predictions[0][1], predictions[0][2]);
+		TestStateSeparation();
 		gNet.fit<mse>(opt, state, predictions, 1, 1);
 	}
+
+	epsilon *= decay;
+	epsilon = std::max(epsilon_min, epsilon);
+	std::cout << "epsilon: " << epsilon << std::endl;
 	
 }
 
@@ -206,8 +252,6 @@ void DecideInputs(RLInput* state, uint8_t* keys)
 		// random action
 		actionIdx = rand() % actionCount;
 	}
-	epsilon *= decay;
-	epsilon = std::max(epsilon_min, epsilon);
 
 	*keys = actions[actionIdx];
 
