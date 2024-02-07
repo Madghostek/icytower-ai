@@ -71,6 +71,8 @@ SaveReplayFunc* _SaveReplay = (SaveReplayFunc*)0x00414370;
 // hook function must return `randomIndex`, because there was a MOV EAX,[randomIndex]
 int(__cdecl* hookPoint)(KeyStates*) = (int(__cdecl*)(KeyStates*))0x0040836e;
 
+bool enableScreenAtReset = false; //waits for game over to prevent crash
+void EnableScreen();
 
 
 //statistics
@@ -217,6 +219,8 @@ void  _HookInput(KeyStates* keyStates)
 	}
 	else if (gameOver)
 	{
+		if (enableScreenAtReset)
+			EnableScreen();
 		gameOver = false;
 		*space_pressed_menu = 0x00;
 		numCallsThisGame = 0;
@@ -329,8 +333,14 @@ void DisableScreen()
 
 }
 
+void ScheduleEnableScreen()
+{
+	enableScreenAtReset = true;
+}
+
 void EnableScreen()
 {
+	enableScreenAtReset = false;
 	*redrawModulo = 0x1;
 	*RedrawScreen = 0x83; //old opcode
 }

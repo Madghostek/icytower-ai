@@ -4,7 +4,7 @@
 
 void BasicHook();
 void ImprovementPatches();
-void EnableScreen();
+void ScheduleEnableScreen();
 void DisableScreen();
 void PrepareVariables(HWND);
 void ExperimentalSpeedup();

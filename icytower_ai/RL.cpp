@@ -154,7 +154,7 @@ void TestStateSeparation()
 tiny_dnn::adam opt;
 void PenalizeRecent()
 {
-	//opt.alpha = 0.0001;
+	opt.alpha*=0.99;
 	constexpr int randomSize = 50;
 
 
@@ -166,7 +166,7 @@ void PenalizeRecent()
 	std::vector<unsigned> randomActions;
 	for (int i = 0; i < randomSize; ++i)
 	{
-		randomActions.push_back((rand()% (recentDecisions.size() - 2))+1);
+		randomActions.push_back(rand()%recentDecisions.size());
 	}
 
 	std::vector<vec_t> states;
@@ -199,6 +199,7 @@ void PenalizeRecent()
 	epsilon *= decay;
 	epsilon = std::max(epsilon_min, epsilon);
 	std::cout << "epsilon: " << epsilon << std::endl;
+	std::cout << "alpha: " << opt.alpha << std::endl;
 	
 }
 

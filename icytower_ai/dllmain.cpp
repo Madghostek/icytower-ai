@@ -48,7 +48,7 @@ DWORD WINAPI MainThread(PVOID param)
     printf("Ready \n");
     BasicHook();
     ImprovementPatches();
-    DeterministicGame();
+    //DeterministicGame();
     //DisableScreen();
 
     // RL stuff
@@ -67,7 +67,7 @@ DWORD WINAPI MainThread(PVOID param)
         if (KEY('K') && KEY(VK_SHIFT))
         {
             printf("Enabling screen\n");
-            EnableScreen();
+            ScheduleEnableScreen();
         }
         else if (KEY('L') && KEY(VK_SHIFT))
         {
