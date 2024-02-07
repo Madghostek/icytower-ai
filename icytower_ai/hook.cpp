@@ -163,7 +163,7 @@ void  _HookInput(KeyStates* keyStates)
 	static int gameNo = 0;
 
 	RLInput state{}; //at least platforms need to be filled with 0s
-	GetPlatforms(state.platforms);
+	//GetPlatforms(state.platforms);
 
 	if (gameState->gameOverHeight || timeSinceNewFloor>maxNoProgressTime)
 	{
@@ -236,15 +236,15 @@ void  _HookInput(KeyStates* keyStates)
 	++timeSinceNewFloor;
 	// RLInput state{}; //at least platforms need to be filled with 0s
 	// GetPlatforms(state.platforms);
-	state.isOnGround = !gameState->jumpPhase;
+	//state.isOnGround = !gameState->jumpPhase;
 	//printf("Phase %d\n", gameState->jumpPhase);
 	state.Xpos = gameState->Xpos;
-	state.Ypos = gameState->Ypos;
+	/*state.Ypos = gameState->Ypos;
 	state.XSpeed = gameState->XSpeed;
 	state.YSpeed = gameState->YSpeed;
 	state.isGameOver = gameState->gameOverHeight;
 	state.clockSpeed = *clockSpeed;
-	state.screenOffset = *screenHeight % 80;
+	state.screenOffset = *screenHeight % 80;*/
 	
 	DecideInputs(&state, &keyStates->keys);
 	if (gameOver) //don't overwrite inputs here, force space

@@ -5,16 +5,16 @@
 typedef union {
 	struct {
 		float Xpos;
-		float Ypos;
-		float XSpeed;
-		float YSpeed;
-		Platform_coincise platforms[7]; //more is never visible on screen
-		float isOnGround; //from jumpPhase
-		float isGameOver;
-		float clockSpeed;
-		float screenOffset; //every visible platform is 80 units apart,
+		//float Ypos;
+		//float XSpeed;
+		//float YSpeed;
+		//Platform_coincise platforms[7]; //more is never visible on screen
+		//float isOnGround; //from jumpPhase
+		//float isGameOver;
+		//float clockSpeed;
+		//float screenOffset; //every visible platform is 80 units apart,
 	};
-	float all[22]; //can't know before the union exists :(
+	float all[1]; //can't know before the union exists :(
 } RLInput;
 
 constexpr unsigned inputSize = sizeof(RLInput) / sizeof(float);
@@ -37,3 +37,4 @@ void PenalizeRecent();
 void GoodRecent();
 void ResetRecent();
 void TrainFakeStates();
+void Test_network();
