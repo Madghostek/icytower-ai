@@ -38,10 +38,23 @@ typedef struct {
 	uint32_t floor_type; // relative to starting type selected in settings
 } Platform;
 
+typedef struct
+{
+	uint32_t pad[8];
+	uint8_t keys;
+} KeyStates;
+
 // --- KNOWN POINTERS ---
 
 
 // this is an array, GameState pointer is stored randomly here, but I don't know the max size
 GameState** randomInit = (GameState **)0x004CB920;
 unsigned* randomIndex = (unsigned*)0x004CB908;
+
+GameState* gameState = NULL; // run this after game init: randomInit[*randomIndex];
+
 Platform (*platformsptr)[platformCount] = (Platform(*)[platformCount])0x004CC8C0;
+
+// at [esp] is pointer to some struct, then at [esp]+0x20 there is key data
+// the function at 0x00401520 normally checks if left key is pressed, keys status is the param on stack
+int(__cdecl* hookPoint)(KeyStates*) = (int(__cdecl*)(KeyStates*))0x00408223; // E8 (F8 92 FF FF): call 0x00401520

@@ -2,19 +2,20 @@
 #include <stdint.h>
 #include <windows.h>
 
+#include "definitions.h"
+
 #define KEY(a) (GetAsyncKeyState(a) & 0x8000)
 
-typedef struct
+void PrintPlatform(int index, Platform p)
 {
-	uint32_t pad[8];
-	uint8_t keys;
-} KeyStates;
+	if (p.sign_text != 0)
+		printf("Platform %d: (%d,%d) %d\n", index, p.left_edge, p.right_edge, p.sign_text); //operator precedence
+	else
+		printf("Platform %d: (%d,%d)\n", index, p.left_edge, p.right_edge); //operator precedence
 
-int TASState = 2;
+}
 
-// at [esp] is pointer to some struct, then at [esp]+0x20 there is key data
-// the function at 0x00401520 normally checks if left key is pressed, keys status is the param on stack
-int (__cdecl * hookPoint)(KeyStates*) = (int(__cdecl*)(KeyStates*))0x00408223; // E8 (F8 92 FF FF): call 0x00401520
+Platform copy[platformCount];
 
 int __cdecl HookInput(KeyStates* keyStates)
 {
@@ -27,20 +28,17 @@ int __cdecl HookInput(KeyStates* keyStates)
 	//keyStates->keys |= (isleft << 1) | isright;
 
 	//printf("HOOK call %d\n", TASState);
-	while (TASState)
+
+		// prints current platrofms by watching for updates
+	if (memcmp(copy, *platformsptr, sizeof(copy)))
 	{
-		if (KEY(0x5A) && TASState==2)
-		{
-			TASState = 1;
-			break;
-		}
-		if (!KEY(90) && TASState == 1)
-		{
-			TASState = 2;
-		}
-		Sleep(10);
+		memcpy(copy, *platformsptr, sizeof(copy));
+		for (int i = 0; i < platformCount; ++i)
+			PrintPlatform(i, (*platformsptr)[i]);
 	}
 
+
+	keyStates->keys &= 16;
 	// do not touch
 	return (int)(keyStates->keys & 1);
 }
@@ -52,4 +50,10 @@ void DoHook()
 
 	// first cast to 1 byte pointer, move 1 byte forward, then overwrite the call arg (diff between PC and destination)
 	*(uint32_t*)((uint8_t*)(hookPoint)+1) = (uint32_t)diff;
+}
+
+void PrepareVariables(HWND hwnd)
+{
+	gameState = randomInit[*randomIndex];
+	memcpy(copy, *platformsptr, sizeof(copy));
 }

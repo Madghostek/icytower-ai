@@ -35,13 +35,32 @@ BOOL WINAPI EnumCallback(HWND hwnd,LPARAM lparam) {
     return 1;
 };
 
+#define KEY(a) (GetAsyncKeyState(a) & 0x8000)
+
 DWORD WINAPI MainThread(PVOID param)
 {
     HWND icyHWND = NULL;
     GetConsole();
     EnumWindows(EnumCallback, (LPARAM)&icyHWND);
+    PrepareVariables(icyHWND);
+    printf("Ready \n");
     DoHook();
-    MemoryReader(icyHWND);
+
+
+    //Platform copy[platformCount];
+    //memcpy(copy, *platformsptr, sizeof(copy));
+    while (!KEY(VK_OEM_2)) //backslash
+    {
+        Sleep(1);
+        /*if (memcmp(copy, *platformsptr, sizeof(copy)))
+        {
+            memcpy(copy, *platformsptr, sizeof(copy));
+            for (int i = 0; i < platformCount; ++i)
+                PrintPlatform(i, (*platformsptr)[i]);
+        }*/
+        
+    }
+
 
     //end
     printf("Closing dll...\n");
