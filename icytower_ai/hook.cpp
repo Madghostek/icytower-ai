@@ -54,6 +54,8 @@ uint8_t* fixFclosePoint2 = (uint8_t*)0x004027cf; // here is  MOV EDX ,dword ptr 
 
 uint8_t* improperRandUse = (uint8_t*)0x0040ac93; // call rand;
 
+uint32_t* determinismPatch = (uint32_t*)0x0040AAD2;
+
 
 uint8_t* msvcrt_fclose = (uint8_t *)0x0049C1D0;
 
@@ -160,6 +162,9 @@ void  _HookInput(KeyStates* keyStates)
 
 	static int gameNo = 0;
 
+	RLInput state{}; //at least platforms need to be filled with 0s
+	GetPlatforms(state.platforms);
+
 	if (gameState->gameOverHeight || timeSinceNewFloor>maxNoProgressTime)
 	{
 		if (!gameOver)
@@ -194,7 +199,15 @@ void  _HookInput(KeyStates* keyStates)
 
 			}
 			// game over, skip quickly and tell RL
-			PenalizeRecent();
+			
+			//TEST: find distance to first platform center and give points for that,
+			//		will the network learn something?
+
+			// 11 is Xpos 163,
+			// 10 is 146
+			// 7 is 99
+			float dist = abs(gameState->Xpos - 17*(state.platforms[1].left_edge + state.platforms[1].right_edge) / 2);
+			PenalizeRecent(dist);
 			ResetRecent();
 			*space_pressed_menu = 0xFF; //always skip
 			gameState->gameOverHeight = 0x500;
@@ -214,18 +227,18 @@ void  _HookInput(KeyStates* keyStates)
 	if (lastFloor < gameState->floor)
 	{
 		printf("Reached new floor\n");
-		GoodRecent();
-		lastFloor = gameState->floor;
-		timeSinceNewFloor = 0;
+		//GoodRecent();
+		//lastFloor = gameState->floor;
+		//timeSinceNewFloor = 0;
 	}
 	++numCalls;
 	++numCallsThisGame;
 	++timeSinceNewFloor;
-	RLInput state{}; //at least platforms need to be filled with 0s
+	// RLInput state{}; //at least platforms need to be filled with 0s
+	// GetPlatforms(state.platforms);
 	state.isOnGround = !gameState->jumpPhase;
 	//printf("Phase %d\n", gameState->jumpPhase);
-	GetPlatforms(state.platforms);
-	state.Xpos = gameState->Xpos;
+	// state.Xpos = gameState->Xpos;
 	state.Ypos = gameState->Ypos;
 	state.XSpeed = gameState->XSpeed;
 	state.YSpeed = gameState->YSpeed;
@@ -234,10 +247,12 @@ void  _HookInput(KeyStates* keyStates)
 	state.screenOffset = *screenHeight % 80;
 	
 	DecideInputs(&state, &keyStates->keys);
+	if (gameOver) //don't overwrite inputs here, force space
+		keyStates->keys = JUMP_INPUT;
 	
-	printf("Decided keys (%d) (floor: %d, %d): ",numCallsThisGame, gameState->floor, timeSinceNewFloor);
-	PrintKeys(keyStates->keys);
-	printf("\n");
+	//printf("Decided keys (%d) (floor: %d, %d): ",numCallsThisGame, gameState->floor, timeSinceNewFloor);
+	//PrintKeys(keyStates->keys);
+	//printf("\n");
 }
 
 // wrapper that will run important code at end
@@ -371,6 +386,13 @@ void ExperimentalSpeedup()
 
 	*dontSaveLast = 0x909046EB;
 
+}
+
+void DeterministicGame()
+{
+	*determinismPatch = 0x002404C7;
+	*(determinismPatch + 1) = 0xE8000000;
+	*(determinismPatch+2) = 0x000917D2;
 }
 
 void PrepareVariables(HWND hwnd)

@@ -8,5 +8,6 @@ void EnableScreen();
 void DisableScreen();
 void PrepareVariables(HWND);
 void ExperimentalSpeedup();
+void DeterministicGame();
 
 constexpr int platformCount = 32;
