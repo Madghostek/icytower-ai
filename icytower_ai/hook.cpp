@@ -315,7 +315,7 @@ uint32_t SubstituteRand()
 void BasicHook()
 {
 	uint32_t diff = (uint32_t)HookInput - (uint32_t)hookPoint - 5;// should be 0x6EA58DE2, -5 because call apparently is relative to next instruction
-	printf("Overwriting call destination to %p (diff is %x)\n", HookInput, diff);
+	//printf("Overwriting call destination to %p (diff is %x)\n", HookInput, diff);
 
 	// first cast to 1 byte pointer, move 1 byte forward, then overwrite the call arg (diff between PC and destination)
 	*(uint8_t*)hookPoint = 0xe8; //call ...

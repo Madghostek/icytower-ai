@@ -43,6 +43,8 @@ constexpr unsigned inputSize = sizeof(RLInput) / sizeof(float);
 // if AI hasn't reached higher floor for 200 frames, kill it
 constexpr unsigned maxNoProgressTime = 200;
 
+extern bool spam; //prints every frame
+
 
 
 

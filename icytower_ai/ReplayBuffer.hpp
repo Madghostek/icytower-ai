@@ -1,6 +1,8 @@
 #include "tiny_dnn/tinier_dnn.h"
 #include "RL.h"
 
+#define prev idx == 0 ? maxSize - 1 : idx - 1
+
 // implemented as composition
 template <typename T>
 class ReplayBuffer
@@ -15,6 +17,11 @@ public:
 		buf[idx] = experience;
 		idx = (idx + 1) % maxSize;
 		currentSize = std::max(idx + 1, currentSize);
+	}
+
+	Decision& back()
+	{
+		return buf[prev];
 	}
 
 	size_t size() { return currentSize; }
@@ -34,12 +41,12 @@ public:
 	/// <typeparam name="T"></typeparam>
 	void provideNextState(const tiny_dnn::vec_t& state)
 	{
-		buf[idx==0?maxSize-1:idx-1].nextState = state; //copy
+		buf[prev].nextState = state; //copy
 	}
 
 private:
 	unsigned currentSize = 0;
-	unsigned maxSize = 5000;
+	unsigned maxSize = 1000;
 	unsigned idx = 0;
 	std::vector<T> buf;
 

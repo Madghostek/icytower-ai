@@ -5,6 +5,8 @@
 #include "hook.h"
 #include "RL.h"
 
+bool spam = true;
+
 BOOL GetConsole()
 {
     FreeConsole();
@@ -67,11 +69,13 @@ DWORD WINAPI MainThread(PVOID param)
         if (KEY('K') && KEY(VK_SHIFT))
         {
             printf("Enabling screen\n");
+            spam = true;
             ScheduleEnableScreen();
         }
         else if (KEY('L') && KEY(VK_SHIFT))
         {
             printf("Disabling screen\n");
+            spam = false;
             DisableScreen();
         }
 

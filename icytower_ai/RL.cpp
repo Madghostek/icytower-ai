@@ -54,9 +54,11 @@ void InitNetwork()
 		initDone = true;
 		std::cout << "Network init" << std::endl;
 
-		gNet << fully_connected_layer(3, 4) << tanh_layer()
-			<< fully_connected_layer(4, 4) << tanh_layer()
-			 << fully_connected_layer(4, 3);
+		gNet << fully_connected_layer(3, 8) << tanh_layer()
+			<< fully_connected_layer(8, 8) << tanh_layer()
+			<< fully_connected_layer(8, 8) << tanh_layer()
+			<< fully_connected_layer(8, 8) << tanh_layer()
+			 << fully_connected_layer(8, 3);
 		//gNet.weight_init(weight_init::constant(1.0));
 		gNet.init_weight(); //THE MOST IMPORTANT LINE IN WHOLE FILE OH GOD
 	}
@@ -71,12 +73,12 @@ void InitNetwork()
 	//auto result = net.predict(input)
 }
 
-void TestStateSeparation()
+void TestCurrentGame(float plat_left, float plat_right)
 {
-	std::cout << "Testing state separation:\n";
-	for (auto x : { 100.f, 200.f,300.f,400.f,500.f,550.f })
+	printf("predicting for %f, %f", plat_left, plat_right);
+	for (float x = 80; x<550; x+=5)
 	{
-		vec_t test1 = { x / Xnormalisation, 0.685f, 0.917f };
+		vec_t test1 = { x / Xnormalisation, plat_left, plat_right };
 		auto res = gNet.predict(test1);
 		printf("x: %f, preds: %f %f %f\n", test1[0], res[0], res[1], res[2]);
 
@@ -182,20 +184,36 @@ void PenalizeRecent()
 		auto Qvalue_nextState = gNet.predict(nextState); 
 		auto bestFutureQvalue = *std::max_element(Qvalue_nextState[0].begin(), Qvalue_nextState[0].end());
 
-		printf("(%d) X: %f\n", i, state[0][0]);
-		printf("predictions: %f %f %f, x: %f, act: %d, r: %f\n", predictions[0][0], predictions[0][1], predictions[0][2], state[0][0], actionTaken, reward);
+		if (abs(reward - bestFutureQvalue) > 10)
+		{
+			//printf("(%d) X: %f\n", i, state[0][0]);
+			printf("Qlearning here!!\n");
+			printf("  predictions: %f %f %f, x: %f, act: %d, r: %f\n", predictions[0][0], predictions[0][1], predictions[0][2], state[0][0], actionTaken, reward);
+			printf("  platforms %f %f\n", state[0][1], state[0][2]);
+			printf("  later best poss: %f\n",  bestFutureQvalue);
+		}
 		predictions[0][actionTaken] = reward + gamma * bestFutureQvalue; //Qlearning, but for a network (no learning rate here)
-		printf("updated prd : %f %f %f\n\n", predictions[0][0], predictions[0][1], predictions[0][2]);
+		if (abs(reward - bestFutureQvalue) > 10)
+			printf("  updated prd : %f %f %f\n\n", predictions[0][0], predictions[0][1], predictions[0][2]);
 		states.push_back(experience.inputs);
 		targets.push_back(predictions[0]);
 	}
 
 	gNet.fit<mse>(opt, states, targets, 2, 1);
 	printf("Train done\n");
-	TestStateSeparation();
+	// debug
+	if (spam)
+		TestCurrentGame(recentDecisions.back().inputs[1], recentDecisions.back().inputs[2]);
 
 	epsilon *= decay;
 	epsilon = std::max(epsilon_min, epsilon);
+
+	static int counter = 0;
+	++counter;
+	if (counter > 100)
+	{
+		epsilon = 0;
+	}
 	std::cout << "epsilon: " << epsilon << std::endl;
 	std::cout << "alpha: " << opt.alpha << std::endl;
 	
@@ -262,26 +280,31 @@ void DecideInputs(RLInput* state, uint8_t* keys, bool isStart)
 	float reward = 0.f;
 	if (state->Xpos<state->right_edge && state->Xpos>state->left_edge)
 	{
+		float radius = (state->right_edge - state->left_edge)/2.f;
+		float center = state->left_edge + radius;
+		float where = abs(state->Xpos - center)/radius;
+		float midBonus = (1 - where) * 10;
 		if (actionIdx == 0) // no input better
-			reward = 100.f;
-		else
-			reward = 20.f;
+			reward = 5.f+ midBonus;
+		//else
+			//reward = 5.f+ midBonus; //THIS IS DUMB, MOVING AWAY FROM CENTER IS REWARDED
 	}
 	else if (state->Xpos > state->right_edge)
 	{
 		if (actionIdx == 1)
-			reward = 5.f;
+			reward = 1.f;
 		else
-			reward = -5.f;
+			reward = -1.f;
 	}
 		
 	else if (state->Xpos < state->left_edge)
 	{
 		if (actionIdx == 2)
-			reward = 5.f;
+			reward = 1.f;
 		else
-			reward = -5.f;
+			reward = -1.f;
 	}
-
+	if (spam)
+		printf("%f %f %f reward: %f\n", state->Xpos, state->left_edge, state->right_edge, reward);
 	recentDecisions.push_back({ inputs, Qvalues, actionIdx, reward, {} });
 }
