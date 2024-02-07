@@ -48,6 +48,7 @@ DWORD WINAPI MainThread(PVOID param)
     printf("Ready \n");
     BasicHook();
     ImprovementPatches();
+    DeterministicGame();
     //DisableScreen();
 
     // RL stuff

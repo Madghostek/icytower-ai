@@ -33,6 +33,6 @@ typedef std::vector<tiny_dnn::vec_t> ActionsTaken;
 void InitNetwork();
 
 void DecideInputs(RLInput*, uint8_t*);
-void PenalizeRecent();
+void PenalizeRecent(float reward);
 void GoodRecent();
 void ResetRecent();
