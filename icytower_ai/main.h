@@ -1,4 +1,4 @@
 #pragma once
 #include <windows.h>
 
-void MemoryReader(HWND hwnd);
+void PrepareVariables(HWND hwnd);
