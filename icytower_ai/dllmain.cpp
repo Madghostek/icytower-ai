@@ -1,7 +1,9 @@
+#include "pch.h"
 #include <windows.h>
 #include <stdio.h>
 
 #include "hook.h"
+#include "RL.h"
 
 BOOL GetConsole()
 {
@@ -47,6 +49,8 @@ DWORD WINAPI MainThread(PVOID param)
     ImprovementPatches();
     DisableScreen();
 
+    // RL stuff
+    InitNetwork();
 
     //Platform copy[platformCount];
     //memcpy(copy, *platformsptr, sizeof(copy));

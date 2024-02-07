@@ -1,3 +1,4 @@
+#include "pch.h" 
 #include <stdio.h>
 #include <stdint.h>
 #include <windows.h>
@@ -35,7 +36,10 @@ uint8_t* WriteLogFunc = (uint8_t*)0x00403d30;
 uint8_t* ShiftRainbowPattern = (uint8_t*)0x004045e0; // this is kinda heavy
 uint8_t* RedrawScreen = (uint8_t*)0x0047e4c4; // sub esp, 0x44;
 uint8_t* PlayBgMusic = (uint8_t*)0x43e618;
-uint8_t* Unknown_calledEveryFrame = (uint8_t *)0x0043e6c8;
+uint8_t* Unknown_calledEveryFrame = (uint8_t*)0x0043e6c8;
+uint8_t* somethingAboutDirectDraw = (uint8_t *)0x0043fecc;
+
+uint32_t* skipEyeCandyUpdate = (uint32_t*)0x0040e570;
 
 //experimental
 uint32_t* skipLoadingData = (uint32_t*)0x0040abd7;
@@ -107,6 +111,7 @@ void GetPlatforms(Platform_coincise* platforms_coincise)
 			platforms_coincise[j].left_edge = (*platformsptr)[i].left_edge;
 			platforms_coincise[j].right_edge = (*platformsptr)[i].right_edge;
 			j += 1;
+			i += 4; // active platforms are always 5 away, so skip 4 ahead for speed
 		}
 	}
 }
@@ -116,8 +121,10 @@ void SaveReplay(const char* fname)
 	_SaveReplay(fname, *(void**)0x004b08cc, *(int*)0x004b08c8, 1);
 }
 
-int __cdecl HookInput(KeyStates* keyStates)
+uint32_t __cdecl HookInput(KeyStates* keyStates)
 {
+	static int numCalls = 0;
+	
 	//printf("keys before: %d\n", keyStates->keys);
 
 	//bool isleft = keyStates->keys & 1;
@@ -159,13 +166,27 @@ int __cdecl HookInput(KeyStates* keyStates)
 
 	static bool stop = false;
 
-	if (gameState->gameOverHeight>0)
+	if (gameState->gameOverHeight)
 	{
 		if (!gameOver)
 		{
 			gameOver = true;
-			if (!(gameNo % 1000))
+
+			static FILETIME lastCall{};
+
+
+			if (!(gameNo % 2000))
+			{
+				
+				long long previousTime = lastCall.dwLowDateTime + (((long long)lastCall.dwHighDateTime) << 32LL);
+				GetSystemTimeAsFileTime(&lastCall);
+				long long currentTime = lastCall.dwLowDateTime + (((long long)lastCall.dwHighDateTime) << 32LL);
+				long long diffSince = currentTime - previousTime;
 				printf("%d Game over, max floor %d max combo %d\n", gameNo, records.floor, records.combo);
+				printf("Number of physic calls %d\n", numCalls);
+				printf("Time taken %lfs\n", diffSince/(double)(1e7));
+				
+			}
 			++gameNo;
 		}
 		if (records.combo < gameState->maxCombo)
@@ -190,7 +211,8 @@ int __cdecl HookInput(KeyStates* keyStates)
 		*space_pressed_menu = 0x00;
 		//printf("Game restarted\n");
 	}
-	RLState state{}; //at least platforms need to be filled with 0s
+	++numCalls;
+	RLInput state{}; //at least platforms need to be filled with 0s
 	state.isOnGround = !gameState->jumpPhase;
 	//printf("Phase %d\n", gameState->jumpPhase);
 	GetPlatforms(state.platforms);
@@ -303,6 +325,9 @@ void ImprovementPatches()
 	*PlayBgMusic = 0xC3;
 	*ShiftRainbowPattern = 0xC3;
 	*Unknown_calledEveryFrame = 0xC3;
+	*somethingAboutDirectDraw = 0xC3;
+
+	*skipEyeCandyUpdate = 0x00018EE9;
 
 	// Bugfix some functions
 	// During new game start there are two places in code when character info is loaded from file, the file is never closed

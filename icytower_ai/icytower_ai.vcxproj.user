@@ -10,14 +10,4 @@
     <LocalDebuggerCommandArguments>--process-name icytower13.exe --inject $(TargetPath)</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommand>$(ProjectDir)\Injector32.exe</LocalDebuggerCommand>
-    <LocalDebuggerCommandArguments>--process-name icytower13.exe --inject $(TargetPath)</LocalDebuggerCommandArguments>
-    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommand>$(ProjectDir)\Injector32.exe</LocalDebuggerCommand>
-    <LocalDebuggerCommandArguments>--process-name icytower13.exe --inject $(TargetPath)</LocalDebuggerCommandArguments>
-    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-  </PropertyGroup>
 </Project>
