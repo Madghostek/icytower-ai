@@ -104,6 +104,7 @@
     <ClInclude Include="definitions.h" />
     <ClInclude Include="hook.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="ReplayBuffer.hpp" />
     <ClInclude Include="RL.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

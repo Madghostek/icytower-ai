@@ -73,3 +73,4 @@ typedef struct
 	uint32_t unknown2[20];
 
 } CharacterData;
+

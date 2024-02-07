@@ -1,6 +1,25 @@
 #pragma once
 
 #include "definitions.h"
+#include "tiny_dnn/tinier_dnn.h"
+
+using namespace tiny_dnn;
+
+struct SDecision
+{
+	vec_t inputs;
+	vec_t outputs;
+	unsigned actionTaken; //action index
+	float reward;
+	vec_t nextState;
+
+
+public:
+	SDecision() {} // this is needed to be able to allocate a vector with initial size
+	SDecision(vec_t in_vec, vec_t out_vec, unsigned a, float r, vec_t nextState) : inputs(in_vec), outputs(out_vec), actionTaken(a), reward(r), nextState(nextState) {};
+};
+
+typedef struct SDecision Decision;
 
 typedef union {
 	struct {
@@ -28,16 +47,14 @@ constexpr unsigned maxNoProgressTime = 200;
 
 
 //vec_t is important because it has aligned allocator and .fit templates need it
-typedef std::vector<tiny_dnn::vec_t> StateBuffer; //tensor is vector of vectors of floats
-typedef std::vector<tiny_dnn::vec_t> ActionsTaken;
+typedef std::vector<vec_t> StateBuffer; //tensor is vector of vectors of floats
+typedef std::vector<vec_t> ActionsTaken;
 
 
 void InitNetwork();
 
-void DecideInputs(RLInput*, uint8_t*);
+void DecideInputs(RLInput*, uint8_t*, bool isStart);
 void PenalizeRecent();
 void GoodRecent();
-void ResetRecent();
 void TrainFakeStates();
-void Test_network();
 void NormaliseState(RLInput*);

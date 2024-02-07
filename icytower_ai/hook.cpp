@@ -110,8 +110,8 @@ void GetPlatforms(Platform_coincise* platforms_coincise)
 		Platform p = (*platformsptr)[i];
 		if (!(*platformsptr)[i].disabled)
 		{
-			platforms_coincise[j].left_edge = (*platformsptr)[i].left_edge;
-			platforms_coincise[j].right_edge = (*platformsptr)[i].right_edge;
+			platforms_coincise[j].left_edge = (float)(*platformsptr)[i].left_edge;
+			platforms_coincise[j].right_edge = (float)(*platformsptr)[i].right_edge;
 			j += 1;
 			i += 4; // active platforms are always 5 away, so skip 4 ahead for speed
 		}
@@ -125,11 +125,11 @@ void SaveReplay(const char* fname)
 
 void  _HookInput(KeyStates* keyStates)
 {
-	static int numCalls = 0;
-	static int numCallsThisGame = 0;
+	static unsigned numCalls = 0;
+	static unsigned numCallsThisGame = 0;
 
-	static int timeSinceNewFloor = 0;
-	static int lastFloor = 0;
+	static unsigned timeSinceNewFloor = 0;
+	static unsigned lastFloor = 0;
 
 	//printf("HOOK call %d\n", TASState);
 
@@ -208,7 +208,6 @@ void  _HookInput(KeyStates* keyStates)
 			// 7 is 99
 			//float dist = abs(gameState->Xpos - 17*(state.platforms[1].left_edge + state.platforms[1].right_edge) / 2);
 			PenalizeRecent();
-			ResetRecent();
 			*space_pressed_menu = 0xFF; //always skip
 			gameState->gameOverHeight = 0x500;
 			timeSinceNewFloor = 0;
@@ -238,9 +237,9 @@ void  _HookInput(KeyStates* keyStates)
 	// GetPlatforms(state.platforms);
 	//state.isOnGround = !gameState->jumpPhase;
 	//printf("Phase %d\n", gameState->jumpPhase);
-	state.Xpos = gameState->Xpos;
-	state.left_edge = (*platformsptr)[7].left_edge;
-	state.right_edge = (*platformsptr)[7].right_edge;
+	state.Xpos = (float)gameState->Xpos;
+	state.left_edge = (float)(*platformsptr)[7].left_edge;
+	state.right_edge = (float)(*platformsptr)[7].right_edge;
 	/*state.Ypos = gameState->Ypos;
 	state.XSpeed = gameState->XSpeed;
 	state.YSpeed = gameState->YSpeed;
@@ -249,7 +248,7 @@ void  _HookInput(KeyStates* keyStates)
 	state.screenOffset = *screenHeight % 80;*/
 	
 	NormaliseState(&state);
-	DecideInputs(&state, &keyStates->keys);
+	DecideInputs(&state, &keyStates->keys, numCallsThisGame==1);
 	if (gameOver) //don't overwrite inputs here, force space
 		keyStates->keys = JUMP_INPUT;
 	

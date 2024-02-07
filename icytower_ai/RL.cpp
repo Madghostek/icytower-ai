@@ -5,39 +5,26 @@
 #include <chrono>
 
 #include "RL.h"
+#include "ReplayBuffer.hpp"
 
 using namespace tiny_dnn;
 
 
-const static float gamma = 0.6; //q network reward, should be big if state space is big
-static float epsilon = 0.9; // random action take, initially tell the network to roam almost randomly, to get some sense about the Q predictions
-static float epsilon_min = 0.1; //don't decrease lower
-static float decay = 0.9; // epsilon dimnishing
+const static float gamma = 0.6f; //q network reward, should be big if state space is big
+static float epsilon = 0.9f; // random action take, initially tell the network to roam almost randomly, to get some sense about the Q predictions
+static float epsilon_min = 0.2f; //don't decrease lower
+static float decay = 0.95f; // epsilon dimnishing
 //const uint8_t actions[] = { 0,JUMP_INPUT,LEFT_INPUT,RIGHT_INPUT,JUMP_INPUT | LEFT_INPUT,JUMP_INPUT | RIGHT_INPUT };
 const uint8_t actions[] = { 0,LEFT_INPUT,RIGHT_INPUT};
 constexpr unsigned actionCount = 3;
 
 float Xnormalisation = 550.f;
-float platformNormalisation = 35;
+float platformNormalisation = 35.f;
 
 network<sequential> gNet;
 bool initDone = false;
 
-
-typedef struct S
-{
-	vec_t inputs;
-	vec_t outputs;
-	unsigned actionTaken; //action index
-	float reward;
-	vec_t nextState;
-
-
-public:
-	S(vec_t in_vec, vec_t out_vec, unsigned a, float r, vec_t nextState) : inputs(in_vec), outputs(out_vec), actionTaken(a), reward(r), nextState(nextState) {};
-} Decision;
-
-std::vector<Decision> recentDecisions;
+ReplayBuffer<Decision> recentDecisions;
 
 // after game over, some of the actions taken recently will be weighted negatively
 // for now apply positive
@@ -68,7 +55,9 @@ void InitNetwork()
 		std::cout << "Network init" << std::endl;
 
 		gNet << fully_connected_layer(3, 16) << tanh_layer()
-			 << fully_connected_layer(16, 16) << tanh_layer()
+			<< fully_connected_layer(16, 16) << tanh_layer()
+			<< fully_connected_layer(16, 16) << tanh_layer()
+			<< fully_connected_layer(16, 16) << tanh_layer()
 			 << fully_connected_layer(16, 3);
 		//gNet.weight_init(weight_init::constant(1.0));
 		gNet.init_weight(); //THE MOST IMPORTANT LINE IN WHOLE FILE OH GOD
@@ -87,103 +76,110 @@ void InitNetwork()
 void TestStateSeparation()
 {
 	std::cout << "Testing state separation:\n";
-	for (auto x : { 100.f, 200.f,300.f,400.f,500.f })
+	for (auto x : { 100.f, 200.f,300.f,400.f,500.f,550.f })
 	{
-		vec_t test1 = { x / Xnormalisation, 0.685, 0.917 };
+		vec_t test1 = { x / Xnormalisation, 0.685f, 0.917f };
 		auto res = gNet.predict(test1);
-		printf("x: %f, preds: %f %f %f\n", x, res[0], res[1], res[2]);
+		printf("x: %f, preds: %f %f %f\n", test1[0], res[0], res[1], res[2]);
 
 	}
 }
 
-void TrainFakeStates()
-{
-	float mid = 450;
-	tiny_dnn::adam opt;
-
-	tensor_t states{};
-	tensor_t outputs{};
-
-	// changing order of those is interesting, network remember better the most recent one,
-	// so for example right now it will overshoot the goal, and swapping the loops causes undershooting.
-	//for (int i = 0; i < 100; ++i)
-	//{
-	//	float randomX = (rand() % (550 - 450)) + 450; //550-450 range
-	//	states.push_back({ randomX / Xnormalisation });
-	//	outputs.push_back({ {-10,10,-10} }); // left best
-
-	//}
-	//for (int i = 0; i < 100; ++i)
-	//{
-	//	float randomX = (rand() % (450 - 90)) + 90; //85-450 range
-	//	states.push_back({ randomX/ Xnormalisation });
-	//	outputs.push_back({ {-10,-10,10} }); //right best
-	//}
-
-	std::vector<int> side;
-
-	for (int i = 0; i < 100; ++i)
-	{
-		side.push_back(1);
-	}
-	for (int i = 0; i < 100; ++i) {
-		side.push_back(0);
-
-	}
-	auto rng = std::default_random_engine{};
-	std::shuffle(side.begin(), side.end(), rng);
-
-	for (auto& s: side){
-		if (s)
-		{
-		float randomX = (rand() % (550 - 450)) + 450; //550-450 range
-		states.push_back({ randomX / Xnormalisation });
-		outputs.push_back({ {-10,10,-10} }); // left best
-		}
-		else {
-		float randomX = (rand() % (450 - 90)) + 90; //85-450 range
-		states.push_back({ randomX / Xnormalisation });
-		outputs.push_back({ {-10,-10,10} }); //right best
-		}
-
-	}
-	unsigned batch = 0;
-	std::cout << "Training on fake states and outputs...\n";
-	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-		gNet.fit<mse>(opt, states, outputs, 8,50, [&]() {
-			std::cout << "batch" << batch++ << std::endl;
-			TestStateSeparation();
-			}, [&]() {});
-	std::cout << "Trained for: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - begin).count() << std::endl;
-
-
-}
+//void TrainFakeStates()
+//{
+//	float mid = 450;
+//	tiny_dnn::adam opt;
+//
+//	tensor_t states{};
+//	tensor_t outputs{};
+//
+//	// changing order of those is interesting, network remember better the most recent one,
+//	// so for example right now it will overshoot the goal, and swapping the loops causes undershooting.
+//	//for (int i = 0; i < 100; ++i)
+//	//{
+//	//	float randomX = (rand() % (550 - 450)) + 450; //550-450 range
+//	//	states.push_back({ randomX / Xnormalisation });
+//	//	outputs.push_back({ {-10,10,-10} }); // left best
+//
+//	//}
+//	//for (int i = 0; i < 100; ++i)
+//	//{
+//	//	float randomX = (rand() % (450 - 90)) + 90; //85-450 range
+//	//	states.push_back({ randomX/ Xnormalisation });
+//	//	outputs.push_back({ {-10,-10,10} }); //right best
+//	//}
+//
+//	std::vector<int> side;
+//
+//	for (int i = 0; i < 100; ++i)
+//	{
+//		side.push_back(1);
+//	}
+//	for (int i = 0; i < 100; ++i) {
+//		side.push_back(0);
+//
+//	}
+//	auto rng = std::default_random_engine{};
+//	std::shuffle(side.begin(), side.end(), rng);
+//
+//	for (auto& s: side){
+//		if (s)
+//		{
+//		float randomX = (rand() % (550 - 450)) + 450; //550-450 range
+//		states.push_back({ randomX / Xnormalisation });
+//		outputs.push_back({ {-10,10,-10} }); // left best
+//		}
+//		else {
+//		float randomX = (rand() % (450 - 90)) + 90; //85-450 range
+//		states.push_back({ randomX / Xnormalisation });
+//		outputs.push_back({ {-10,-10,10} }); //right best
+//		}
+//
+//	}
+//	unsigned batch = 0;
+//	std::cout << "Training on fake states and outputs...\n";
+//	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+//		gNet.fit<mse>(opt, states, outputs, 8,50, [&]() {
+//			std::cout << "batch" << batch++ << std::endl;
+//			TestStateSeparation();
+//			}, [&]() {});
+//	std::cout << "Trained for: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - begin).count() << std::endl;
+//
+//
+//}
 
 // Recent decisions were bad and caused player to die (or get killed off due to inactivity)
 // we don't want that, train network on opposite inputs as correct (which is not ideal)
 // Change: give reward for getting close to platform middle instead
+tiny_dnn::adam opt;
 void PenalizeRecent()
 {
+	//opt.alpha = 0.0001;
+	constexpr int randomSize = 50;
 
 
-	tiny_dnn::gradient_descent opt;
-	opt.alpha *= 0.3;// *epsilon; //slow down!! use random walk epsilion here, so that it slows down even more when it's close to optimum
+	//opt.alpha *= 0.3;// *epsilon; //slow down!! use random walk epsilion here, so that it slows down even more when it's close to optimum
 	printf("train\n");
 	int j = recentDecisions.size();
 	//we don't have next state at last element (i=0) and first??
 
 	std::vector<unsigned> randomActions;
-	for (int i = 0; i < 20; ++i)
+	for (int i = 0; i < randomSize; ++i)
 	{
 		randomActions.push_back((rand()% (recentDecisions.size() - 2))+1);
 	}
+
+	std::vector<vec_t> states;
+	std::vector<vec_t> targets;
 	for (auto i: randomActions)
 	{
-		const auto &state = tensor_t({ recentDecisions[j - i - 1].inputs });
-		auto predictions = tensor_t({ recentDecisions[j - i - 1].outputs });
-		const auto &actionTaken = recentDecisions[j - i - 1].actionTaken;
-		const auto &reward = recentDecisions[j - i - 1].reward;
-		const auto &nextState = tensor_t({ recentDecisions[j - i - 1].nextState });
+		auto& experience = recentDecisions[i];
+		if (experience.nextState.size() == 0) continue; //happened to roll the terminal state, no need to train on it for now
+		const auto &state = tensor_t({ experience.inputs });
+		auto predictions = tensor_t({ experience.outputs });
+		const auto &actionTaken = experience.actionTaken;
+		const auto &reward = experience.reward;
+		const auto &nextState = tensor_t({ experience.nextState });
 
 		auto Qvalue_nextState = gNet.predict(nextState); 
 		auto bestFutureQvalue = *std::max_element(Qvalue_nextState[0].begin(), Qvalue_nextState[0].end());
@@ -192,9 +188,13 @@ void PenalizeRecent()
 		printf("predictions: %f %f %f, x: %f, act: %d, r: %f\n", predictions[0][0], predictions[0][1], predictions[0][2], state[0][0], actionTaken, reward);
 		predictions[0][actionTaken] = reward + gamma * bestFutureQvalue; //Qlearning, but for a network (no learning rate here)
 		printf("updated prd : %f %f %f\n\n", predictions[0][0], predictions[0][1], predictions[0][2]);
-		TestStateSeparation();
-		gNet.fit<mse>(opt, state, predictions, 1, 1);
+		states.push_back(experience.inputs);
+		targets.push_back(predictions[0]);
 	}
+
+	gNet.fit<mse>(opt, states, targets, 2, 1);
+	printf("Train done\n");
+	TestStateSeparation();
 
 	epsilon *= decay;
 	epsilon = std::max(epsilon_min, epsilon);
@@ -202,25 +202,20 @@ void PenalizeRecent()
 	
 }
 
-void GoodRecent()
-{
-	tiny_dnn::gradient_descent opt;
-	opt.alpha = 0.2;
-	for (int i = 0; i < std::min((int)recentDecisions.size(),30); ++i)
-	{
-		int j = recentDecisions.size();
-		printf("train %d\n", i);
-		auto state = std::vector<vec_t>({ recentDecisions[j - i - 1].inputs });
-		auto action = std::vector<vec_t>({ recentDecisions[j - i - 1].outputs });
-		gNet.fit<mse>(opt, state, action, 1, 1);
-	}
-
-}
-
-void ResetRecent()
-{
-	recentDecisions.clear();
-}
+//void GoodRecent()
+//{
+//	tiny_dnn::gradient_descent opt;
+//	opt.alpha = 0.2f;
+//	for (int i = 0; i < std::min((int)recentDecisions.size(),30); ++i)
+//	{
+//		int j = recentDecisions.size();
+//		printf("train %d\n", i);
+//		auto state = std::vector<vec_t>({ recentDecisions[j - i - 1].inputs });
+//		auto action = std::vector<vec_t>({ recentDecisions[j - i - 1].outputs });
+//		gNet.fit<mse>(opt, state, action, 1, 1);
+//	}
+//
+//}
 
 
 void NormaliseState(RLInput* state)
@@ -235,7 +230,7 @@ void NormaliseState(RLInput* state)
 /// </summary>
 /// <param name="state">network inputs</param>
 /// <param name="keys">place to write the decided inputs</param>
-void DecideInputs(RLInput* state, uint8_t* keys)
+void DecideInputs(RLInput* state, uint8_t* keys, bool isStart)
 {
 	if (!initDone)
 	{
@@ -245,8 +240,8 @@ void DecideInputs(RLInput* state, uint8_t* keys)
 	for (int i = 0; i < 3; ++i)
 		inputs.push_back( state->all[i]);
 
-	if (recentDecisions.size()>1)
-		recentDecisions.back().nextState = inputs; //update previous experience with current state
+	if (!isStart)
+		recentDecisions.provideNextState(inputs);
 
 	unsigned actionIdx;
 	auto Qvalues = gNet.predict(inputs);
@@ -269,39 +264,25 @@ void DecideInputs(RLInput* state, uint8_t* keys)
 	if (state->Xpos<state->right_edge && state->Xpos>state->left_edge)
 	{
 		if (actionIdx == 0) // no input better
-			reward = 40.f;
+			reward = 100.f;
 		else
 			reward = 20.f;
 	}
-	else if (state->Xpos > state->right_edge && actionIdx == 1)
-		reward = 5.f;
-	else if (state->Xpos < state->left_edge && actionIdx == 2)
-		reward = 5.f;
+	else if (state->Xpos > state->right_edge)
+	{
+		if (actionIdx == 1)
+			reward = 5.f;
+		else
+			reward = -5.f;
+	}
+		
+	else if (state->Xpos < state->left_edge)
+	{
+		if (actionIdx == 2)
+			reward = 5.f;
+		else
+			reward = -5.f;
+	}
 
-	std::cout << state->Xpos << " " << state->left_edge << " " << state->right_edge << std::endl;
-
-	recentDecisions.push_back({ inputs,Qvalues, actionIdx, reward,{}}); //next state will be filled at next step
+	recentDecisions.push_back({ inputs, Qvalues, actionIdx, reward, {} });
 }
-
-
-//void DecideInputsOld(RLInput* state, uint8_t* keys)
-//{
-//	if (state->isGameOver)
-//	{
-//		//printf("game over, so space\n");
-//		*keys |= JUMP_INPUT;
-//		return;
-//	}
-//	if (state->XSpeed>=0)
-//	{
-//		*keys |= RIGHT_INPUT;
-//	}
-//	else
-//		*keys |= LEFT_INPUT;
-//	if (state->isOnGround)
-//	{
-//		*keys |= JUMP_INPUT;
-//		//printf("Is on ground, so jump\n");
-//	}
-//
-//}
