@@ -1,2 +1,21 @@
-﻿  hook.cpp
+﻿  dllmain.cpp
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\RL.h(16,3): warning C4201: nonstandard extension used: nameless struct/union
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\dllmain.cpp(30,9): warning C4189: 'result': local variable is initialized but not referenced
+  hook.cpp
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\RL.h(16,3): warning C4201: nonstandard extension used: nameless struct/union
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\hook.cpp(111,56): warning C4244: '=': conversion from 'uint32_t' to 'float', possible loss of data
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\hook.cpp(112,57): warning C4244: '=': conversion from 'uint32_t' to 'float', possible loss of data
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\hook.cpp(211,24): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\hook.cpp(212,24): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\hook.cpp(213,26): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\hook.cpp(214,26): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\hook.cpp(215,30): warning C4244: '=': conversion from 'uint32_t' to 'float', possible loss of data
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\hook.cpp(217,37): warning C4244: '=': conversion from 'uint32_t' to 'float', possible loss of data
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\hook.cpp(342,12): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\hook.cpp(360,28): warning C4100: 'hwnd': unreferenced formal parameter
+  RL.cpp
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\RL.h(16,3): warning C4201: nonstandard extension used: nameless struct/union
+  Generating Code...
+C:\Users\Tomek2\source\repos\icytower_ai\icytower_ai\dllmain.cpp(94): warning C4702: unreachable code
+  LINK : C:\Users\Tomek2\source\repos\icytower_ai\Debug\icytower_ai.dll not found or not built by the last incremental link; performing full link
   icytower_ai.vcxproj -> C:\Users\Tomek2\source\repos\icytower_ai\Debug\icytower_ai.dll

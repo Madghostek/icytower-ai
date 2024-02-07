@@ -121,17 +121,9 @@ void SaveReplay(const char* fname)
 	_SaveReplay(fname, *(void**)0x004b08cc, *(int*)0x004b08c8, 1);
 }
 
-uint32_t __cdecl HookInput(KeyStates* keyStates)
+void  _HookInput(KeyStates* keyStates)
 {
 	static int numCalls = 0;
-	
-	//printf("keys before: %d\n", keyStates->keys);
-
-	//bool isleft = keyStates->keys & 1;
-	//bool isright = keyStates->keys & 2;
-
-	//keyStates->keys &= ~0x3;
-	//keyStates->keys |= (isleft << 1) | isright;
 
 	//printf("HOOK call %d\n", TASState);
 
@@ -203,7 +195,7 @@ uint32_t __cdecl HookInput(KeyStates* keyStates)
 			// game over, skip quickly and tell RL
 			*space_pressed_menu = 0xFF; //always skip
 			gameState->gameOverHeight = 0x500;
-		return *randomIndex;
+			return;
 	}
 	else if (gameOver)
 	{
@@ -230,6 +222,12 @@ uint32_t __cdecl HookInput(KeyStates* keyStates)
 	//printf("Decided keys: ");
 	//PrintKeys(keyStates->keys);
 	//printf("\n");
+}
+
+// wrapper that will run important code at end
+uint32_t __cdecl HookInput(KeyStates* keyStates)
+{
+	_HookInput(keyStates);
 	// do not touch, old code
 	return *randomIndex;
 }

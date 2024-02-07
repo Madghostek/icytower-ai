@@ -114,6 +114,8 @@ class cross_entropy {
       d += -t[i] * std::log(y[i]) -
            (float_t(1) - t[i]) * std::log(float_t(1) - y[i]);
 
+    if (d != d) d = 0;  // Catch NaN when t[i]==y[i]==1 or t[i]==y[i]==0
+
     return d;
   }
 
@@ -121,8 +123,12 @@ class cross_entropy {
     assert(y.size() == t.size());
     vec_t d(t.size());
 
-    for (size_t i = 0; i < y.size(); ++i)
+    for (size_t i = 0; i < y.size(); ++i) {
       d[i]        = (y[i] - t[i]) / (y[i] * (float_t(1) - y[i]));
+      if (d[i] != d[i])
+        d[i] = t[i] == 0 ? 1.f : -1.f;  // Catch NaN when t[i]==y[i]==1 or t[i]==y[i]==0
+    }
+                       
 
     return d;
   }

@@ -2,18 +2,25 @@
 
 #include "definitions.h"
 
-
-typedef struct {
-	double Xpos;
-	double Ypos;
-	double XSpeed;
-	double YSpeed;
-	Platform_coincise platforms[7]; //more is never visible on screen
-	double isOnGround; //from jumpPhase
-	double isGameOver;
-	int8_t clockSpeed;
-	double screenOffset; //every visible platform is 80 units apart,
+typedef union {
+	struct {
+		float Xpos;
+		float Ypos;
+		float XSpeed;
+		float YSpeed;
+		Platform_coincise platforms[7]; //more is never visible on screen
+		float isOnGround; //from jumpPhase
+		float isGameOver;
+		float clockSpeed;
+		float screenOffset; //every visible platform is 80 units apart,
+	};
+	float all[22]; //can't know before the union exists :(
 } RLInput;
+
+constexpr unsigned inputSize = sizeof(RLInput) / sizeof(float);
+
+
+
 
 
 //vec_t is important because it has aligned allocator and .fit templates need it

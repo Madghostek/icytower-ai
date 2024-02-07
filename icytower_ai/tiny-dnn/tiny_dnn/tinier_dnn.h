@@ -18,7 +18,7 @@
 
 //#include "tiny_dnn/activations/asinh_layer.h"
 //#include "tiny_dnn/activations/elu_layer.h"
-//#include "tiny_dnn/activations/leaky_relu_layer.h"
+#include "tiny_dnn/activations/leaky_relu_layer.h"
 #include "tiny_dnn/activations/relu_layer.h"
 //#include "tiny_dnn/activations/selu_layer.h"
 #include "tiny_dnn/activations/sigmoid_layer.h"
@@ -147,7 +147,7 @@ using rectified_linear = tiny_dnn::relu_layer;
 
 using softmax = tiny_dnn::softmax_layer;
 
-//using leaky_relu = tiny_dnn::leaky_relu_layer;
+using leaky_relu = tiny_dnn::leaky_relu_layer;
 //
 //using elu = tiny_dnn::elu_layer;
 //
