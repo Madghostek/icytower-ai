@@ -19,6 +19,7 @@ const uint8_t actions[] = { 0,LEFT_INPUT,RIGHT_INPUT};
 constexpr unsigned actionCount = 3;
 
 float Xnormalisation = 550.f;
+float platformNormalisation = 40;
 
 network<sequential> gNet;
 bool initDone = false;
@@ -67,7 +68,7 @@ void InitNetwork()
 		initDone = true;
 		std::cout << "Network init" << std::endl;
 
-		gNet << fully_connected_layer(1, 16) << tanh_layer()
+		gNet << fully_connected_layer(3, 16) << tanh_layer()
 			 << fully_connected_layer(16, 16) << tanh_layer()
 			 << fully_connected_layer(16, 3);
 		//gNet.weight_init(weight_init::constant(1.0));
@@ -89,7 +90,7 @@ void TestStateSeparation()
 	std::cout << "Testing state separation:\n";
 	for (auto x : { 200.f,300.f,400.f,500.f, 161.565689f })
 	{
-		vec_t test1 = { x / Xnormalisation };
+		vec_t test1 = { x / Xnormalisation, 0.6, 0.8 };
 		auto res = gNet.predict(test1);
 		printf("x: %f, preds: %f %f %f\n", x, res[0], res[1], res[2]);
 
@@ -220,6 +221,14 @@ void ResetRecent()
 	recentDecisions.clear();
 }
 
+
+void NormaliseState(RLInput* state)
+{
+	state->Xpos /= Xnormalisation;
+	state->left_edge /= platformNormalisation;
+	state->right_edge /= platformNormalisation;
+}
+
 /// <summary>
 /// Runs forward pass through the network
 /// </summary>
@@ -232,8 +241,8 @@ void DecideInputs(RLInput* state, uint8_t* keys)
 		InitNetwork();
 	}
 	vec_t inputs;
-	for (int i = 0; i < 1; ++i)
-		inputs.push_back( state->all[i]/Xnormalisation);
+	for (int i = 0; i < 3; ++i)
+		inputs.push_back( state->all[i]);
 
 	if (recentDecisions.size()>1)
 		recentDecisions.back().nextState = inputs; //update previous experience with current state
@@ -256,14 +265,13 @@ void DecideInputs(RLInput* state, uint8_t* keys)
 	*keys = actions[actionIdx];
 
 	float reward = 0.f;
-	if (actionIdx == 1 && state->Xpos < 450)
-		reward = -10.f;
-	else if (actionIdx == 2 && state->Xpos >450)
-		reward = -10.f;
-	else if (actionIdx == 1 && state->Xpos > 450)
-		reward = 10.f;
-	else if (actionIdx == 2 && state->Xpos < 450)
-		reward = 10.f;
+	if (state->Xpos<state->right_edge && state->Xpos>state->left_edge)
+	{
+		if (actionIdx == 0) // no input better
+			reward = 15.f;
+		else
+			reward = 10.f;
+	}
 	recentDecisions.push_back({ inputs,Qvalues, actionIdx, reward,{}}); //next state will be filled at next step
 }
 

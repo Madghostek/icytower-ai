@@ -239,6 +239,8 @@ void  _HookInput(KeyStates* keyStates)
 	//state.isOnGround = !gameState->jumpPhase;
 	//printf("Phase %d\n", gameState->jumpPhase);
 	state.Xpos = gameState->Xpos;
+	state.left_edge = (*platformsptr)[7].left_edge;
+	state.right_edge = (*platformsptr)[7].right_edge;
 	/*state.Ypos = gameState->Ypos;
 	state.XSpeed = gameState->XSpeed;
 	state.YSpeed = gameState->YSpeed;
@@ -246,6 +248,7 @@ void  _HookInput(KeyStates* keyStates)
 	state.clockSpeed = *clockSpeed;
 	state.screenOffset = *screenHeight % 80;*/
 	
+	NormaliseState(&state);
 	DecideInputs(&state, &keyStates->keys);
 	if (gameOver) //don't overwrite inputs here, force space
 		keyStates->keys = JUMP_INPUT;

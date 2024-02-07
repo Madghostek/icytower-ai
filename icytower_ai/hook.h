@@ -11,3 +11,5 @@ void ExperimentalSpeedup();
 void DeterministicGame();
 
 constexpr int platformCount = 32;
+
+void _HookInput(KeyStates* keyStates);
