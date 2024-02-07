@@ -5,14 +5,15 @@
 
 void DecideInputs(RLState* state, uint8_t* keys)
 {
-	printf("State: %d\n", state->screenOffset);
-	for (int i = 0; i < 7; ++i)
-	{
-	printf("Platform %d: (%d,%d)\n", i, state->platforms[i].left_edge, state->platforms[i].right_edge); //operator precedence
-	}
+	//printf("State: %d\n", state->screenOffset);
+	//for (int i = 0; i < 7; ++i)
+	//{
+	//printf("Platform %d: (%d,%d)\n", i, state->platforms[i].left_edge, state->platforms[i].right_edge); //operator precedence
+	//}
 
 	if (state->isGameOver)
 	{
+		//printf("game over, so space\n");
 		*keys |= JUMP_INPUT;
 		return;
 	}
@@ -25,7 +26,7 @@ void DecideInputs(RLState* state, uint8_t* keys)
 	if (state->isOnGround)
 	{
 		*keys |= JUMP_INPUT;
-		printf("Is on ground, so jump\n");
+		//printf("Is on ground, so jump\n");
 	}
 
 }
