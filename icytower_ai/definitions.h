@@ -52,6 +52,8 @@ typedef struct
 	uint8_t keys;
 } KeyStates;
 
+typedef uint32_t IcyAction;
+
 #define LEFT_INPUT 1
 #define RIGHT_INPUT 2
 #define JUMP_INPUT 16
