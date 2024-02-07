@@ -124,6 +124,10 @@ void SaveReplay(const char* fname)
 void  _HookInput(KeyStates* keyStates)
 {
 	static int numCalls = 0;
+	static int numCallsThisGame = 0;
+
+	static int timeSinceNewFloor = 0;
+	static int lastFloor = 0;
 
 	//printf("HOOK call %d\n", TASState);
 
@@ -156,9 +160,7 @@ void  _HookInput(KeyStates* keyStates)
 
 	static int gameNo = 0;
 
-	static bool stop = false;
-
-	if (gameState->gameOverHeight)
+	if (gameState->gameOverHeight || timeSinceNewFloor>maxNoProgressTime)
 	{
 		if (!gameOver)
 		{
@@ -169,41 +171,56 @@ void  _HookInput(KeyStates* keyStates)
 
 			if (!(gameNo % 2000))
 			{
-				
+
 				long long previousTime = lastCall.dwLowDateTime + (((long long)lastCall.dwHighDateTime) << 32LL);
 				GetSystemTimeAsFileTime(&lastCall);
 				long long currentTime = lastCall.dwLowDateTime + (((long long)lastCall.dwHighDateTime) << 32LL);
 				long long diffSince = currentTime - previousTime;
 				printf("%d Game over, max floor %d max combo %d\n", gameNo, records.floor, records.combo);
 				printf("Number of physic calls %d\n", numCalls);
-				printf("Time taken %lfs\n", diffSince/(double)(1e7));
-				
+				printf("Time taken %lfs\n", diffSince / (double)(1e7));
+
 			}
 			++gameNo;
-		}
-		if (records.combo < gameState->maxCombo)
-		{
-			records.combo = gameState->maxCombo;
-			SaveReplay("brute/best_combo.itr");
-		}
-		if (records.floor < gameState->floor)
-		{
-			records.floor = gameState->floor;
-			SaveReplay("brute/best_floor.itr");
+			if (records.combo < gameState->maxCombo)
+			{
+				records.combo = gameState->maxCombo;
+				SaveReplay("brute/best_combo.itr");
+			}
+			if (records.floor < gameState->floor)
+			{
+				records.floor = gameState->floor;
+				SaveReplay("brute/best_floor.itr");
 
-		}
+			}
 			// game over, skip quickly and tell RL
+			PenalizeRecent();
+			ResetRecent();
 			*space_pressed_menu = 0xFF; //always skip
 			gameState->gameOverHeight = 0x500;
+			timeSinceNewFloor = 0;
+			lastFloor = 0;
 			return;
+		}
 	}
 	else if (gameOver)
 	{
 		gameOver = false;
 		*space_pressed_menu = 0x00;
+		numCallsThisGame = 0;
 		//printf("Game restarted\n");
 	}
+
+	if (lastFloor < gameState->floor)
+	{
+		printf("Reached new floor\n");
+		GoodRecent();
+		lastFloor = gameState->floor;
+		timeSinceNewFloor = 0;
+	}
 	++numCalls;
+	++numCallsThisGame;
+	++timeSinceNewFloor;
 	RLInput state{}; //at least platforms need to be filled with 0s
 	state.isOnGround = !gameState->jumpPhase;
 	//printf("Phase %d\n", gameState->jumpPhase);
@@ -215,13 +232,12 @@ void  _HookInput(KeyStates* keyStates)
 	state.isGameOver = gameState->gameOverHeight;
 	state.clockSpeed = *clockSpeed;
 	state.screenOffset = *screenHeight % 80;
-
-	if (!stop)
-		DecideInputs(&state, &keyStates->keys);
 	
-	//printf("Decided keys: ");
-	//PrintKeys(keyStates->keys);
-	//printf("\n");
+	DecideInputs(&state, &keyStates->keys);
+	
+	printf("Decided keys (%d) (floor: %d, %d): ",numCallsThisGame, gameState->floor, timeSinceNewFloor);
+	PrintKeys(keyStates->keys);
+	printf("\n");
 }
 
 // wrapper that will run important code at end
