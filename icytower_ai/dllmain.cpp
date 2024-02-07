@@ -52,7 +52,8 @@ DWORD WINAPI MainThread(PVOID param)
     //DisableScreen();
 
     // RL stuff
-    //InitNetwork();
+    InitNetwork();
+    TrainFakeStates();
 
     //Platform copy[platformCount];
     //memcpy(copy, *platformsptr, sizeof(copy));

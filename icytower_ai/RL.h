@@ -36,3 +36,4 @@ void DecideInputs(RLInput*, uint8_t*);
 void PenalizeRecent();
 void GoodRecent();
 void ResetRecent();
+void TrainFakeStates();
