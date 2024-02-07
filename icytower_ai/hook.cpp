@@ -207,7 +207,8 @@ void  _HookInput(KeyStates* keyStates)
 			// 10 is 146
 			// 7 is 99
 			//float dist = abs(gameState->Xpos - 17*(state.platforms[1].left_edge + state.platforms[1].right_edge) / 2);
-			PenalizeRecent();
+			//PenalizeRecent();
+			UpdateQValues();
 			ResetRecent();
 			*space_pressed_menu = 0xFF; //always skip
 			gameState->gameOverHeight = 0x500;

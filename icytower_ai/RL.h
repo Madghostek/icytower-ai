@@ -38,3 +38,4 @@ void GoodRecent();
 void ResetRecent();
 void TrainFakeStates();
 void Test_network();
+void UpdateQValues();

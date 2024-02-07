@@ -61,7 +61,7 @@ DWORD WINAPI MainThread(PVOID param)
     {
         if (KEY('I') && KEY(VK_CONTROL))
         {
-            InitNetwork();
+            //InitNetwork();
             //TrainFakeStates();
         }
         if (KEY('K') && KEY(VK_SHIFT))
