@@ -54,11 +54,9 @@ void InitNetwork()
 		initDone = true;
 		std::cout << "Network init" << std::endl;
 
-		gNet << fully_connected_layer(3, 16) << tanh_layer()
-			<< fully_connected_layer(16, 16) << tanh_layer()
-			<< fully_connected_layer(16, 16) << tanh_layer()
-			<< fully_connected_layer(16, 16) << tanh_layer()
-			 << fully_connected_layer(16, 3);
+		gNet << fully_connected_layer(3, 4) << tanh_layer()
+			<< fully_connected_layer(4, 4) << tanh_layer()
+			 << fully_connected_layer(4, 3);
 		//gNet.weight_init(weight_init::constant(1.0));
 		gNet.init_weight(); //THE MOST IMPORTANT LINE IN WHOLE FILE OH GOD
 	}

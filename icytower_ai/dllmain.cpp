@@ -75,6 +75,7 @@ DWORD WINAPI MainThread(PVOID param)
             DisableScreen();
         }
 
+        // enable this after data has been loaded once
         if (KEY('D') && KEY(VK_SHIFT) && KEY(VK_CONTROL))
         {
             printf("!!!ENABLING EXPERIMENTAL DATA SALVAGING");
