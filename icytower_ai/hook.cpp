@@ -35,10 +35,12 @@ uint8_t* WriteLogFunc = (uint8_t*)0x00403d30;
 uint8_t* ShiftRainbowPattern = (uint8_t*)0x004045e0; // this is kinda heavy
 uint8_t* RedrawScreen = (uint8_t*)0x0047e4c4; // sub esp, 0x44;
 uint8_t* PlayBgMusic = (uint8_t*)0x43e618;
+uint8_t* Unknown_calledEveryFrame = (uint8_t *)0x0043e6c8;
 
 //experimental
 uint32_t* skipLoadingData = (uint32_t*)0x0040abd7;
 uint8_t* CleanUp = (uint8_t*)0x0040aa20;
+uint32_t* dontSaveLast = (uint32_t*)0x0040ec1c; //instead of call, jump over everything, 0xEB 0x46 0x90 0x90 0x90
 
 
 
@@ -51,6 +53,10 @@ uint8_t* improperRandUse = (uint8_t*)0x0040ac93; // call rand;
 
 uint8_t* msvcrt_fclose = (uint8_t *)0x0049C1D0;
 
+typedef void (SaveReplayFunc)(const char* fname, void* movieData,int movieLen, int flag);
+
+SaveReplayFunc* _SaveReplay = (SaveReplayFunc*)0x00414370;
+
 // at [esp] is some struct, then at [esp]+0x20 there is key data
 // the function at 0x00401520 normally checks if left key is pressed, keys status is the param on stack
 //int(__cdecl* hookPoint)(KeyStates*) = (int(__cdecl*)(KeyStates*))0x00408223; // E8 (F8 92 FF FF): call 0x00401520
@@ -59,6 +65,14 @@ uint8_t* msvcrt_fclose = (uint8_t *)0x0049C1D0;
 // hook function must return `randomIndex`, because there was a MOV EAX,[randomIndex]
 int(__cdecl* hookPoint)(KeyStates*) = (int(__cdecl*)(KeyStates*))0x0040836e;
 
+
+
+//statistics
+
+struct {
+	unsigned floor = 0;
+	unsigned combo = 0;
+} records;
 
 void PrintKeys(uint32_t keys)
 {
@@ -97,6 +111,11 @@ void GetPlatforms(Platform_coincise* platforms_coincise)
 	}
 }
 
+void SaveReplay(const char* fname)
+{
+	_SaveReplay(fname, *(void**)0x004b08cc, *(int*)0x004b08c8, 1);
+}
+
 int __cdecl HookInput(KeyStates* keyStates)
 {
 	//printf("keys before: %d\n", keyStates->keys);
@@ -111,10 +130,10 @@ int __cdecl HookInput(KeyStates* keyStates)
 
 	static int TASState = 0;
 
-	if (KEY(VK_OEM_1) and !TASState)
+	/*if (KEY(VK_OEM_1) and !TASState)
 	{
 		TASState = 1;
-	}
+	}*/
 
 	while (TASState)
 	{
@@ -145,29 +164,32 @@ int __cdecl HookInput(KeyStates* keyStates)
 		if (!gameOver)
 		{
 			gameOver = true;
-			printf("%d Game over, floor %d combo %d\n", gameNo++, gameState->floor, gameState->maxCombo);
+			if (!(gameNo % 1000))
+				printf("%d Game over, max floor %d max combo %d\n", gameNo, records.floor, records.combo);
+			++gameNo;
 		}
-		if (gameState->maxCombo < 250) //if interesting, don't skip end menu
+		if (records.combo < gameState->maxCombo)
 		{
+			records.combo = gameState->maxCombo;
+			SaveReplay("brute/best_combo.itr");
+		}
+		if (records.floor < gameState->floor)
+		{
+			records.floor = gameState->floor;
+			SaveReplay("brute/best_floor.itr");
+
+		}
 			// game over, skip quickly and tell RL
 			*space_pressed_menu = 0xFF; //always skip
 			gameState->gameOverHeight = 0x500;
-		}
-		else if (!stop)
-		{
-			printf("----------------EPIC\n");
-			stop = true;
-			
-		}
 		return *randomIndex;
 	}
 	else if (gameOver)
 	{
 		gameOver = false;
 		*space_pressed_menu = 0x00;
-		printf("Game restarted\n");
+		//printf("Game restarted\n");
 	}
-	
 	RLState state{}; //at least platforms need to be filled with 0s
 	state.isOnGround = !gameState->jumpPhase;
 	//printf("Phase %d\n", gameState->jumpPhase);
@@ -280,6 +302,7 @@ void ImprovementPatches()
 	*PlaySoundFunc = 0xC3;
 	*PlayBgMusic = 0xC3;
 	*ShiftRainbowPattern = 0xC3;
+	*Unknown_calledEveryFrame = 0xC3;
 
 	// Bugfix some functions
 	// During new game start there are two places in code when character info is loaded from file, the file is never closed
@@ -307,7 +330,7 @@ void ExperimentalSpeedup()
 	*(skipLoadingData + 1) = 0x9010C483; //sub esp,0x10; nop
 	*(skipLoadingData+2) = 0xC35F5E5B; //pop ebx, pop esi, pop edi, ret
 
-	//skipLoadingData causes crash later somewhere
+	*dontSaveLast = 0x909046EB;
 
 }
 

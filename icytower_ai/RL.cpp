@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdio.h>
+#include <algorithm>
 
 #include "RL.h"
 

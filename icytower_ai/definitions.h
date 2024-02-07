@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 
+
 #ifdef _GHIDRA
 #define uint32_t int
 #define uint8_t unsigned char
