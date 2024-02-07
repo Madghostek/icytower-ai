@@ -43,7 +43,8 @@ DWORD WINAPI MainThread(PVOID param)
     EnumWindows(EnumCallback, (LPARAM)&icyHWND);
     PrepareVariables(icyHWND);
     printf("Ready \n");
-    DoHook();
+    BasicHook();
+    ImprovementPatches();
 
 
     //Platform copy[platformCount];

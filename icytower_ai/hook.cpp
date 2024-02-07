@@ -6,6 +6,7 @@
 #include "hook.h"
 #include "definitions.h"
 #include "RL.h"
+#include <time.h>
 
 #define KEY(a) (GetAsyncKeyState(a) & 0x8000)
 
@@ -23,15 +24,19 @@ uint32_t* multiPurposeTimer = (uint32_t*)0x004D2D80;
 
 int32_t* redrawModulo = (int32_t*)0x0040eb23; // set to n to draw every nth frame, negative will be the same as positive
 
+
 uint8_t* callReplayMenu = (uint8_t*)0x004103da;
 
-uint8_t* removeOutFade = (uint8_t*)0x00440C4C;
-uint8_t* removeInFade = (uint8_t*)0x00440c2c;
-
-uint8_t* removeLog = (uint8_t*)0x00403d30;
+// stuff to remove with early ret
+uint8_t* OutFadeFunc = (uint8_t*)0x00440C4C;
+uint8_t* InFadeFunc = (uint8_t*)0x00440c2c;
+uint8_t* PlaySoundFunc = (uint8_t*)0x00404650;
+uint8_t* WriteLogFunc = (uint8_t*)0x00403d30;
 
 uint8_t* fixFclosePoint = (uint8_t*)0x0401f55;   // here is  MOV EAX, 0x4ac029
 uint8_t* fixFclosePoint2 = (uint8_t*)0x004027cf; // here is  MOV EDX ,dword ptr [EDI  + 0x4e4 ]
+
+uint8_t* improperRandUse = (uint8_t*)0x0040ac93; // call rand;
 
 
 uint8_t* msvcrt_fclose = (uint8_t *)0x0049C1D0;
@@ -44,6 +49,13 @@ uint8_t* msvcrt_fclose = (uint8_t *)0x0049C1D0;
 // hook function must return `randomIndex`, because there was a MOV EAX,[randomIndex]
 int(__cdecl* hookPoint)(KeyStates*) = (int(__cdecl*)(KeyStates*))0x0040836e;
 
+
+void PrintKeys(uint32_t keys)
+{
+	if (keys & LEFT_INPUT) printf("L");
+	if (keys & RIGHT_INPUT) printf("R");
+	if (keys & JUMP_INPUT) printf("J");
+}
 
 void PrintPlatform(int index, Platform p)
 {
@@ -116,6 +128,8 @@ int __cdecl HookInput(KeyStates* keyStates)
 
 	static int gameNo = 0;
 
+	static bool stop = false;
+
 	if (gameState->gameOverHeight>0)
 	{
 		if (!gameOver)
@@ -123,22 +137,30 @@ int __cdecl HookInput(KeyStates* keyStates)
 			gameOver = true;
 			printf("%d Game over, floor %d combo %d\n", gameNo++, gameState->floor, gameState->maxCombo);
 		}
-		if (gameState->maxCombo < 100) //if interesting, don't skip end menu
+		if (gameState->maxCombo < 200) //if interesting, don't skip end menu
 		{
 			// game over, skip quickly and tell RL
 			*space_pressed_menu = 0xFF; //always skip
 			gameState->gameOverHeight = 0x500;
+		}
+		else
+		{
+			printf("----------------EPIC\n");
+			stop = true;
+			
 		}
 		return *randomIndex;
 	}
 	else if (gameOver)
 	{
 		gameOver = false;
+		*space_pressed_menu = 0x00;
 		printf("Game restarted\n");
 	}
 	
 	RLState state{}; //at least platforms need to be filled with 0s
 	state.isOnGround = !gameState->jumpPhase;
+	//printf("Phase %d\n", gameState->jumpPhase);
 	GetPlatforms(state.platforms);
 	state.Xpos = gameState->Xpos;
 	state.Ypos = gameState->Ypos;
@@ -148,10 +170,12 @@ int __cdecl HookInput(KeyStates* keyStates)
 	state.clockSpeed = *clockSpeed;
 	state.screenOffset = *screenHeight % 80;
 
-	DecideInputs(&state, &keyStates->keys);
+	if (!stop)
+		DecideInputs(&state, &keyStates->keys);
 	
-	//printf("Decided keys: %d\n", keyStates->keys);
-
+	//printf("Decided keys: ");
+	//PrintKeys(keyStates->keys);
+	//printf("\n");
 	// do not touch, old code
 	return *randomIndex;
 }
@@ -190,7 +214,16 @@ void __declspec(naked) FixFclose2() //FILE* fp will be in ECX
 	}
 }
 
-void DoHook()
+uint32_t seed;
+// At start of every game there is need to generate a seed for platforms layout, but originally rand() is used to get the seed.
+// This is bad because the random sequence will fall into a cycle much faster than normal usage of rand()
+// So I generate one seed once, then just return seed+1, which is predictable but completely random from player standpoint.
+uint32_t SubstituteRand()
+{
+	return seed++;
+}
+
+void BasicHook()
 {
 	uint32_t diff = (uint32_t)HookInput - (uint32_t)hookPoint - 5;// should be 0x6EA58DE2, -5 because call apparently is relative to next instruction
 	printf("Overwriting call destination to %p (diff is %x)\n", HookInput, diff);
@@ -198,11 +231,17 @@ void DoHook()
 	// first cast to 1 byte pointer, move 1 byte forward, then overwrite the call arg (diff between PC and destination)
 	*(uint8_t*)hookPoint = 0xe8; //call ...
 	*(uint32_t*)((uint8_t*)(hookPoint)+1) = (uint32_t)diff;
+}
 
+void ImprovementPatches()
+{
 	// patch out fps limit
 	// high modulo values crash, because animation updates don't expect so fast frames
 	// but when it's so high it never redraws it never crashes :)))
 	*redrawModulo = 0x7FFFFFFF; //mov ebx,xxxx <-- frame redraw modulo
+
+	//alt way, then change fps2 in cheatengine
+	//*(uint32_t*)0x0040eb47 = 0x7FFFFFFF;
 
 	// Don't show replay menu, always play again
 	// TODO: Does this save previous attempt?
@@ -210,16 +249,16 @@ void DoHook()
 	*callReplayMenu = 0xB8; //mov eax
 	*(uint32_t*)(callReplayMenu + 1) = 1; //4 bytes
 
-	//remove out fade
-	*removeOutFade = 0xC3; //ret
-	*removeInFade = 0xC3;
+	//early rets
+	*OutFadeFunc = 0xC3; //ret
+	*InFadeFunc = 0xC3;
+	*WriteLogFunc = 0xC3;
+	*PlaySoundFunc = 0xC3;
 
 	// Bugfix some functions
 	// During new game start there are two places in code when character info is loaded from file, the file is never closed
 	// So after 250 games program runs out of file descriptors. Intrestingly, it doesn't crash, because error handling is well written,
 	// so you only get thrown into main menu and the play game option doesn't work.
-
-	*removeLog = 0xC3;
 
 	*fixFclosePoint = 0xe8; //call
 	*(uint32_t*)(fixFclosePoint + 1) = (uint32_t)FixFclose1-(uint32_t)fixFclosePoint-5;
@@ -228,6 +267,9 @@ void DoHook()
 	*(uint32_t*)(fixFclosePoint2 + 1) = (uint32_t)FixFclose2 - (uint32_t)fixFclosePoint2 - 5;
 	*(fixFclosePoint2+5) = 0x41; //there was one leftover byte from previous instruction.
 
+	srand(time(NULL));
+	seed = rand();
+	*(uint32_t*)(improperRandUse + 1) = (uint32_t)SubstituteRand - (uint32_t)improperRandUse - 5;
 }
 
 void PrepareVariables(HWND hwnd)
