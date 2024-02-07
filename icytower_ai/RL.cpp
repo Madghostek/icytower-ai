@@ -9,15 +9,16 @@ using namespace tiny_dnn;
 
 
 const static float gamma = 0.6; //q network reward, should be big if state space is big
-static float epsilon = 0.1; // random action take, initially tell the network to roam almost randomly, to get some sense about the Q predictions
+static float epsilon = 0.9; // random action take, initially tell the network to roam almost randomly, to get some sense about the Q predictions
 static float epsilon_min = 0.1; //don't decrease lower
-static float decay = 0.999; // epsilon dimnishing
+static float decay = 0.9; // epsilon dimnishing, every step (not epoch... is this good?)
 static float lrate = 0.2; // how much to update the old value
 //const uint8_t actions[] = { 0,JUMP_INPUT,LEFT_INPUT,RIGHT_INPUT,JUMP_INPUT | LEFT_INPUT,JUMP_INPUT | RIGHT_INPUT };
 const uint8_t actions[] = { 0,LEFT_INPUT,RIGHT_INPUT};
 constexpr unsigned actionCount = 3;
 
-float Xnormalisation = 550.f;
+float Xnormalisation = 600.f;
+float mid = 450;
 
 network<sequential> gNet;
 bool initDone = false;
@@ -85,7 +86,6 @@ void InitNetwork()
 
 void TrainFakeStates()
 {
-	float mid = 450;
 	tiny_dnn::gradient_descent opt;
 
 	tensor_t states{};
@@ -130,7 +130,7 @@ void PenalizeRecent()
 	//we don't have next state at last element (i=0) and first??
 
 	std::vector<unsigned> randomActions;
-	for (int i = 0; i < 20; ++i)
+	for (int i = 0; i < 200; ++i)
 	{
 		randomActions.push_back((rand()% (recentDecisions.size() - 2))+1);
 	}
@@ -147,10 +147,17 @@ void PenalizeRecent()
 
 		printf("(%d) X: %f\n", i, state[0][0]);
 		printf("predictions: %f %f %f, x: %f, act: %d, r: %f\n", predictions[0][0], predictions[0][1], predictions[0][2], state[0][0], actionTaken, reward);
-		predictions[0][actionTaken] = predictions[0][actionTaken]*(1-lrate)+(reward + gamma*bestFutureQvalue)*lrate; //Qlearning
+		//predictions[0][actionTaken] = predictions[0][actionTaken]*(1-lrate)+(reward + gamma*bestFutureQvalue)*lrate; //Qlearning
+		// no q-learning
+		predictions[0][actionTaken] = reward;
+
 		printf("updated prd : %f %f %f\n\n", predictions[0][0], predictions[0][1], predictions[0][2]);
 		gNet.fit<mse>(opt, state, predictions, 1, 1);
 	}
+
+	printf("E: %f\n", epsilon);
+	epsilon *= decay;
+	epsilon = std::max(epsilon_min, epsilon);
 	
 }
 
@@ -171,7 +178,11 @@ void GoodRecent()
 
 void ResetRecent()
 {
-	recentDecisions.clear();
+	if (recentDecisions.size() > 10000)
+	{
+		recentDecisions.erase(recentDecisions.begin(), recentDecisions.begin()+1000);
+		std::cout << "Erased 1000 oldest decisions\n";
+	}
 }
 
 /// <summary>
@@ -206,20 +217,21 @@ void DecideInputs(RLInput* state, uint8_t* keys)
 		// random action
 		actionIdx = rand() % actionCount;
 	}
-	epsilon *= decay;
-	epsilon = std::max(epsilon_min, epsilon);
 
 	*keys = actions[actionIdx];
 
-	float reward = 0.f;
+	float reward = 200 - abs(state->Xpos - mid);
 	if (actionIdx == 1 && state->Xpos < 450)
-		reward = -10.f;
-	else if (actionIdx == 2 && state->Xpos >450)
-		reward = -10.f;
+		reward += -1000.f;
+	else if (actionIdx == 2 && state->Xpos > 450)
+		reward += -1000.f;
 	else if (actionIdx == 1 && state->Xpos > 450)
-		reward = 10.f;
+		reward += 1000.f;
 	else if (actionIdx == 2 && state->Xpos < 450)
-		reward = 10.f;
+		reward += 1000.f;
+	else if (actionIdx == 0 && abs(state->Xpos - mid) > 20)
+		reward = -10000.f;
+
 	recentDecisions.push_back({ inputs,Qvalues, actionIdx, reward,{}}); //next state will be filled at next step
 }
 
