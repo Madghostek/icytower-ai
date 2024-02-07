@@ -42,8 +42,8 @@ typedef struct {
 } Platform;
 
 typedef struct {
-	uint8_t left_edge;
-	uint8_t right_edge;
+	float left_edge;
+	float right_edge;
 } Platform_coincise;
 
 typedef struct

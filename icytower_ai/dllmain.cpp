@@ -47,15 +47,19 @@ DWORD WINAPI MainThread(PVOID param)
     printf("Ready \n");
     BasicHook();
     ImprovementPatches();
-    DisableScreen();
+    //DisableScreen();
 
     // RL stuff
-    InitNetwork();
+    //InitNetwork();
 
     //Platform copy[platformCount];
     //memcpy(copy, *platformsptr, sizeof(copy));
     while (!KEY(VK_OEM_2)) //backslash
     {
+        if (KEY('I') && KEY(VK_CONTROL))
+        {
+            InitNetwork();
+        }
         if (KEY('K') && KEY(VK_SHIFT))
         {
             printf("Enabling screen\n");
