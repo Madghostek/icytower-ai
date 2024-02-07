@@ -54,3 +54,19 @@ typedef struct
 #define LEFT_INPUT 1
 #define RIGHT_INPUT 2
 #define JUMP_INPUT 16
+
+//ghidra only
+
+//1024 size
+typedef struct
+{
+	char charName[32];
+	uint32_t unknown[298];
+	void* sfx_death;
+	void* sfx_edge;
+	void* sfx_greeting;
+	void* sfx_unk2;
+	void* sfx_bg;
+	uint32_t unknown2[20];
+
+} CharacterData;

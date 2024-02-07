@@ -45,13 +45,30 @@ DWORD WINAPI MainThread(PVOID param)
     printf("Ready \n");
     BasicHook();
     ImprovementPatches();
+    DisableScreen();
 
 
     //Platform copy[platformCount];
     //memcpy(copy, *platformsptr, sizeof(copy));
     while (!KEY(VK_OEM_2)) //backslash
     {
-        Sleep(1);
+        if (KEY('K') && KEY(VK_SHIFT))
+        {
+            printf("Enabling screen\n");
+            EnableScreen();
+        }
+        else if (KEY('L') && KEY(VK_SHIFT))
+        {
+            printf("Disabling screen\n");
+            DisableScreen();
+        }
+
+        if (KEY('D') && KEY(VK_SHIFT) && KEY(VK_CONTROL))
+        {
+            printf("!!!ENABLING EXPERIMENTAL DATA SALVAGING");
+            ExperimentalSpeedup();
+        }
+        Sleep(3000);
         /*if (memcmp(copy, *platformsptr, sizeof(copy)))
         {
             memcpy(copy, *platformsptr, sizeof(copy));

@@ -32,6 +32,16 @@ uint8_t* OutFadeFunc = (uint8_t*)0x00440C4C;
 uint8_t* InFadeFunc = (uint8_t*)0x00440c2c;
 uint8_t* PlaySoundFunc = (uint8_t*)0x00404650;
 uint8_t* WriteLogFunc = (uint8_t*)0x00403d30;
+uint8_t* ShiftRainbowPattern = (uint8_t*)0x004045e0; // this is kinda heavy
+uint8_t* RedrawScreen = (uint8_t*)0x0047e4c4; // sub esp, 0x44;
+uint8_t* PlayBgMusic = (uint8_t*)0x43e618;
+
+//experimental
+uint32_t* skipLoadingData = (uint32_t*)0x0040abd7;
+uint8_t* CleanUp = (uint8_t*)0x0040aa20;
+
+
+
 
 uint8_t* fixFclosePoint = (uint8_t*)0x0401f55;   // here is  MOV EAX, 0x4ac029
 uint8_t* fixFclosePoint2 = (uint8_t*)0x004027cf; // here is  MOV EDX ,dword ptr [EDI  + 0x4e4 ]
@@ -137,13 +147,13 @@ int __cdecl HookInput(KeyStates* keyStates)
 			gameOver = true;
 			printf("%d Game over, floor %d combo %d\n", gameNo++, gameState->floor, gameState->maxCombo);
 		}
-		if (gameState->maxCombo < 200) //if interesting, don't skip end menu
+		if (gameState->maxCombo < 250) //if interesting, don't skip end menu
 		{
 			// game over, skip quickly and tell RL
 			*space_pressed_menu = 0xFF; //always skip
 			gameState->gameOverHeight = 0x500;
 		}
-		else
+		else if (!stop)
 		{
 			printf("----------------EPIC\n");
 			stop = true;
@@ -233,12 +243,26 @@ void BasicHook()
 	*(uint32_t*)((uint8_t*)(hookPoint)+1) = (uint32_t)diff;
 }
 
-void ImprovementPatches()
+void DisableScreen()
 {
+
 	// patch out fps limit
 	// high modulo values crash, because animation updates don't expect so fast frames
 	// but when it's so high it never redraws it never crashes :)))
 	*redrawModulo = 0x7FFFFFFF; //mov ebx,xxxx <-- frame redraw modulo
+	*RedrawScreen = 0xC3; //ret
+
+}
+
+void EnableScreen()
+{
+	*redrawModulo = 0x1;
+	*RedrawScreen = 0x83; //old opcode
+}
+
+void ImprovementPatches()
+{
+
 
 	//alt way, then change fps2 in cheatengine
 	//*(uint32_t*)0x0040eb47 = 0x7FFFFFFF;
@@ -254,6 +278,8 @@ void ImprovementPatches()
 	*InFadeFunc = 0xC3;
 	*WriteLogFunc = 0xC3;
 	*PlaySoundFunc = 0xC3;
+	*PlayBgMusic = 0xC3;
+	*ShiftRainbowPattern = 0xC3;
 
 	// Bugfix some functions
 	// During new game start there are two places in code when character info is loaded from file, the file is never closed
@@ -270,6 +296,19 @@ void ImprovementPatches()
 	srand(time(NULL));
 	seed = rand();
 	*(uint32_t*)(improperRandUse + 1) = (uint32_t)SubstituteRand - (uint32_t)improperRandUse - 5;
+}
+
+
+// disable reloading data, use the same character and sounds everytime
+void ExperimentalSpeedup()
+{
+	*CleanUp = 0xC3; //this is pretty safe, doesn't even leak memory when using harold
+	*skipLoadingData = 0x9040C031; //xor eax,eax; inc eax; nop
+	*(skipLoadingData + 1) = 0x9010C483; //sub esp,0x10; nop
+	*(skipLoadingData+2) = 0xC35F5E5B; //pop ebx, pop esi, pop edi, ret
+
+	//skipLoadingData causes crash later somewhere
+
 }
 
 void PrepareVariables(HWND hwnd)
