@@ -13,13 +13,12 @@ const static float gamma = 0.6; //q network reward, should be big if state space
 static float epsilon = 0.9; // random action take, initially tell the network to roam almost randomly, to get some sense about the Q predictions
 static float epsilon_min = 0.1; //don't decrease lower
 static float decay = 0.9; // epsilon dimnishing
-static float lrate = 0.2; // how much to update the old value
 //const uint8_t actions[] = { 0,JUMP_INPUT,LEFT_INPUT,RIGHT_INPUT,JUMP_INPUT | LEFT_INPUT,JUMP_INPUT | RIGHT_INPUT };
 const uint8_t actions[] = { 0,LEFT_INPUT,RIGHT_INPUT};
 constexpr unsigned actionCount = 3;
 
 float Xnormalisation = 550.f;
-float platformNormalisation = 40;
+float platformNormalisation = 35;
 
 network<sequential> gNet;
 bool initDone = false;
@@ -88,9 +87,9 @@ void InitNetwork()
 void TestStateSeparation()
 {
 	std::cout << "Testing state separation:\n";
-	for (auto x : { 200.f,300.f,400.f,500.f, 161.565689f })
+	for (auto x : { 100.f, 200.f,300.f,400.f,500.f })
 	{
-		vec_t test1 = { x / Xnormalisation, 0.6, 0.8 };
+		vec_t test1 = { x / Xnormalisation, 0.685, 0.917 };
 		auto res = gNet.predict(test1);
 		printf("x: %f, preds: %f %f %f\n", x, res[0], res[1], res[2]);
 
@@ -165,8 +164,10 @@ void TrainFakeStates()
 // Change: give reward for getting close to platform middle instead
 void PenalizeRecent()
 {
+
+
 	tiny_dnn::gradient_descent opt;
-	opt.alpha*=0.1*epsilon; //slow down!! use random walk epsilion here, so that it slows down even more when it's close to optimum
+	opt.alpha *= 0.3;// *epsilon; //slow down!! use random walk epsilion here, so that it slows down even more when it's close to optimum
 	printf("train\n");
 	int j = recentDecisions.size();
 	//we don't have next state at last element (i=0) and first??
@@ -189,7 +190,7 @@ void PenalizeRecent()
 
 		printf("(%d) X: %f\n", i, state[0][0]);
 		printf("predictions: %f %f %f, x: %f, act: %d, r: %f\n", predictions[0][0], predictions[0][1], predictions[0][2], state[0][0], actionTaken, reward);
-		predictions[0][actionTaken] = predictions[0][actionTaken]*(1-lrate)+(reward + gamma*bestFutureQvalue)*lrate; //Qlearning
+		predictions[0][actionTaken] = reward + gamma * bestFutureQvalue; //Qlearning, but for a network (no learning rate here)
 		printf("updated prd : %f %f %f\n\n", predictions[0][0], predictions[0][1], predictions[0][2]);
 		TestStateSeparation();
 		gNet.fit<mse>(opt, state, predictions, 1, 1);
@@ -268,10 +269,17 @@ void DecideInputs(RLInput* state, uint8_t* keys)
 	if (state->Xpos<state->right_edge && state->Xpos>state->left_edge)
 	{
 		if (actionIdx == 0) // no input better
-			reward = 15.f;
+			reward = 40.f;
 		else
-			reward = 10.f;
+			reward = 20.f;
 	}
+	else if (state->Xpos > state->right_edge && actionIdx == 1)
+		reward = 5.f;
+	else if (state->Xpos < state->left_edge && actionIdx == 2)
+		reward = 5.f;
+
+	std::cout << state->Xpos << " " << state->left_edge << " " << state->right_edge << std::endl;
+
 	recentDecisions.push_back({ inputs,Qvalues, actionIdx, reward,{}}); //next state will be filled at next step
 }
 
